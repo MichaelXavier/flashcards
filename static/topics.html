@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/css/materialize.min.css">
+    <link rel="stylesheet" type="text/css" href="app.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="row topics-filters">
+        <div class="col s12">
+          <div class="input-field col">
+            <input placeholder="Search" id="search" type="search" value="Some">
+          </div>
+          <div class="input-field col">
+            <select>
+              <option>Name Ascending</option>
+              <option>Name Descending</option>
+
+              <option>Created Ascending</option>
+              <option>Created Descending</option>
+
+              <option>Most Recently Attempted</option>
+              <option>Less Recently Attempted</option>
+            </select>
+            <label>Order</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="row topics">
+        <div class="card-grid col s12">
+          <div class="card topic">
+            <div class="card-content">
+              <span class="card-title"><mark>Some</mark> Topic</span>
+              <ul>
+                <li>13 Cards</li>
+                <li>Last quizzed: 3 days ago</li>
+                <li>Avg Score: 75%</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card topic">
+            <div class="card-content">
+              <span class="card-title"><mark>Some</mark> Topic</span>
+              <ul>
+                <li>13 Cards</li>
+                <li>Last quizzed: 3 days ago</li>
+                <li>Avg Score: 75%</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card topic">
+            <div class="card-content">
+              <span class="card-title"><mark>Some</mark> Topic</span>
+              <ul>
+                <li>13 Cards</li>
+                <li>Last quizzed: 3 days ago</li>
+                <li>Avg Score: 75%</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card topic">
+            <div class="card-content">
+              <span class="card-title"><mark>Some</mark> Topic</span>
+              <ul>
+                <li>13 Cards</li>
+                <li>Last quizzed: 3 days ago</li>
+                <li>Avg Score: 75%</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/js/materialize.min.js"></script>
+    <script type="text/javascript">
+     // what is this life
+     $(document).ready(function() {
+       $('select').material_select();
+     });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+.flip-container {
+	perspective: 1000px;
+}
+
+.flipper {
+  min-height: 200px;
+  perspective: 1000px;
+	transition: 0.6s;
+	transform-style: preserve-3d;
+
+	position: relative;
+  cursor: pointer;
+}
+
+.card-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.topic {
+    width: 20%;
+    margin: 1rem;
+}
+
+/* hide back of pane during swap */
+.front, .back {
+	backface-visibility: hidden;
+
+	position: absolute;
+	top: 0;
+	left: 0;
+  width: 400px;
+}
+
+/* front pane, placed above back */
+.front {
+	z-index: 2;
+	/* for firefox 31 */
+	transform: rotateY(0deg);
+}
+
+/* back, initially hidden pane */
+.back {
+	transform: rotateY(180deg);
+}
+
+
+.flipper.flip {
+    transform: rotateY(180deg);
+}
+
+.topic-progress {
+    font-size: 1.3rem;
+    font-weight: bold;
+}
