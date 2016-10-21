@@ -5,12 +5,17 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "node server.js"
+    "server": "node server.js",
+    "build": "pulp browserify --to output/index.js --src-path frontend-src",
+    "watch": "pulp --watch browserify --to output/index.js --src-path frontend-src"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.14.0"
+    "express": "^4.14.0",
+    "react": "^15.3.2",
+    "react-dom": "^15.3.2",
+    "yaml": "^0.3.0"
   }
 }

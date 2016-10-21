@@ -14,5 +14,18 @@
     "bower_components",
     "test",
     "tests"
-  ]
+  ],
+  "resolutions": {
+    "purescript-pux": "^6.0.1",
+    "purescript-dom": "~2.0.1",
+    "purescript-signal": "^7.0.0",
+    "purescript-js-date": "^2.0.0"
+  },
+  "dependencies": {
+    "purescript-pux": "^6.0.1",
+    "purescript-pux-devtool": "^3.0.1",
+    "purescript-react-dom": "^1.0.0",
+    "purescript-affjax": "^2.0.1",
+    "purescript-argonaut": "^1.0.0"
+  }
 }
