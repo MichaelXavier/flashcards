@@ -10,15 +10,20 @@ module Flashcards.Components.Topics
 
 
 -------------------------------------------------------------------------------
+import Data.Array as A
 import Data.Map as M
 import Flashcards.Client.Topics as Topics
 import Data.Either (Either(Right, Left))
-import Data.Monoid (mempty)
+import Data.Maybe (maybe)
+import Data.Monoid ((<>), mempty)
+import Data.String (toLower, contains)
 import Data.Tuple (Tuple(Tuple))
 import Network.HTTP.Affjax (AJAX)
-import Prelude ((<<<), map)
+import Prelude (show, (<<<), map)
 import Pux (noEffects, EffModel)
-import Pux.Html (text, Html)
+import Pux.Html (option, select, input, li, ul, Html, div, text, span, (##), (!), (#))
+import Pux.Html.Attributes (type_, id_, placeholder, className)
+import Pux.Html.Events (onKeyUp)
 -------------------------------------------------------------------------------
 
 
@@ -29,6 +34,7 @@ type TopicsMap = M.Map Topics.TopicId Topics.Topic
 type State = {
       topics :: TopicsMap
     , status :: Status
+    , filterText :: String
     }
 
 
@@ -41,12 +47,16 @@ data Status = NotLoaded
 
 -------------------------------------------------------------------------------
 initialState :: State
-initialState = {topics: mempty, status: NotLoaded}
+initialState = { topics: mempty
+               , status: NotLoaded
+               , filterText: mempty
+               }
 
 
 -------------------------------------------------------------------------------
 data Action = RefreshTopics
             | ReceiveTopics (Either String (Array Topics.Topic))
+            | FilterTopics String
 
 
 -------------------------------------------------------------------------------
@@ -60,6 +70,7 @@ update (ReceiveTopics (Right ts)) s = noEffects s {
       status = Loaded
     , topics = mapTopics ts
     }
+update (FilterTopics f) s = noEffects s { filterText = f }
 
 
 -------------------------------------------------------------------------------
@@ -70,8 +81,67 @@ mapTopics = M.fromFoldable <<< map toPair
 
 
 -------------------------------------------------------------------------------
+--TODO: highlighting
+filterTopics :: String -> Array Topics.Topic -> Array Topics.Topic
+filterTopics "" ts = ts
+filterTopics srch ts = A.filter match ts
+  where
+    match (Topics.Topic t) = containsCI srch t.title
+
+
+-------------------------------------------------------------------------------
+containsCI :: String -> String -> Boolean
+containsCI srch s = contains (toLower srch) (toLower s)
+
+
+-------------------------------------------------------------------------------
+--TODO: structure, filters
+--TODO: extract some boilerplate for html structure
 view :: State -> Html Action
-view {status: NotLoaded} = text "Not loaded."
-view {status: Loading} = text "Loading."
-view {status: LoadError e} = text e --TODO: error
-view _ = text "TODO: display"
+view s = div ! className "container" ##
+  [ topicFiltersView
+  , topicsView
+  ]
+  where
+    topics = filterTopics s.filterText (A.fromFoldable (M.values s.topics))
+    topicFiltersView = div ! className "row topics-filters" #
+      div ! className "col s12" ##
+        [ searchField
+        , sortField
+        ]
+    searchField = div ! className "input-field col" #
+      input
+        [ placeholder "Search"
+        , id_ "search"
+        , type_ "search"
+        , onKeyUp (\e -> FilterTopics e.target.value)
+        ]
+        []
+    sortField = div ! className "input-field col" #
+      select ##
+        [ option # text "Name Ascending"
+        , option # text "Name Descending"
+
+        , option # text "Created Ascending"
+        , option # text "Created Descending"
+
+        , option # text "Most Recently Attempted"
+        , option # text "Least Recently Attempted"
+        ]
+    topicsView = div ! className "row topics" #
+      div ! className "card-grid col s12" ##
+        topicsView'
+    topicsView' = case s.status of
+      NotLoaded -> [text "Not loaded"]
+      Loading -> [text "Loading..."]
+      LoadError e -> [text e] --TODO; error formatting
+      Loaded -> map topicView topics
+    topicView (Topics.Topic t) = div ! className "card topic" #
+      div ! className "card-content" ##
+        [ span ! className "card-title" # text t.title
+        , ul ##
+            [ li # text (show t.card_count <> " Cards")
+            , li # text ("Last quizzed: " <> t.last_quizzed)
+            , li # text ("Avg score:  " <> maybe "N/A" show t.avg_score)
+            ]
+        ]
