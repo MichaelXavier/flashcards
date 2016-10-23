@@ -20,15 +20,16 @@ import Flashcards.Client.Topics as Topics
 import Data.Either (Either(Right, Left))
 import Data.Maybe (Maybe(Just, Nothing), maybe)
 import Data.Monoid ((<>), mempty)
-import Data.String (toLower, contains)
+import Data.String (toLower)
 import Data.Tuple (Tuple(Tuple))
-import Flashcards.Util (splitAt)
+import Flashcards.Util (containsCI, splitAt)
 import Network.HTTP.Affjax (AJAX)
 import Prelude (class Show, show, map, (<<<))
 import Pux (noEffects, EffModel)
 import Pux.Html (mark, option, select, input, li, ul, Html, div, text, span, (##), (!), (#))
 import Pux.Html.Attributes (type_, id_, placeholder, className)
 import Pux.Html.Events (onKeyUp)
+import Pux.Router (link)
 -------------------------------------------------------------------------------
 
 
@@ -92,11 +93,6 @@ filterTopics "" ts = ts
 filterTopics srch ts = A.filter match ts
   where
     match (Topics.Topic t) = containsCI srch t.title
-
-
--------------------------------------------------------------------------------
-containsCI :: String -> String -> Boolean
-containsCI srch s = contains (toLower srch) (toLower s)
 
 
 -------------------------------------------------------------------------------
@@ -184,10 +180,14 @@ view s = div ! className "container" ##
       Loaded -> map topicView topics
     topicView (Topics.Topic t) = div ! className "card topic" #
       div ! className "card-content" ##
-        [ span ! className "card-title" ## hlText s.filterText t.title
+        [ span ! className "card-title" #
+            link ("/topics/" <> tidS) ## hlText s.filterText t.title
         , ul ##
             [ li # text (show t.card_count <> " Cards")
             , li # text ("Last quizzed: " <> t.last_quizzed)
             , li # text ("Avg score:  " <> maybe "N/A" show t.avg_score)
             ]
         ]
+        where
+          tidS = case t.id of
+            Topics.TopicId tid -> show tid

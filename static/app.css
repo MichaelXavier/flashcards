@@ -20,7 +20,7 @@
     align-items: flex-start;
 }
 
-.topic {
+.card-grid .card {
     width: 20%;
     margin: 1rem;
 }

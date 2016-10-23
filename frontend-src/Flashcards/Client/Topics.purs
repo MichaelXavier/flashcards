@@ -2,6 +2,7 @@ module Flashcards.Client.Topics
     ( Topic(..)
     , TopicId(..)
     , getTopics
+    , getTopic
     ) where
 
 
@@ -12,10 +13,12 @@ import Data.Argonaut (class DecodeJson, decodeJson, (.?))
 import Data.Either (either, Either(Left))
 import Data.Eq (class Eq)
 import Data.Generic (gEq, gCompare, class Generic)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(Just, Nothing))
+import Data.Monoid ((<>))
 import Data.Ord (class Ord)
 import Network.HTTP.Affjax (get, AJAX)
-import Prelude (map, show, pure, bind, (<<<))
+import Network.HTTP.StatusCode (StatusCode(StatusCode))
+import Prelude (($), (==), map, show, pure, bind, (<<<))
 -------------------------------------------------------------------------------
 
 
@@ -72,6 +75,14 @@ getTopics :: forall eff. Aff ( ajax :: AJAX | eff) (Either String (Array Topic))
 getTopics = do
   res <- attempt (get "/topics")
   let decode reply = decodeJson reply.response
-  pure (either (Left <<< show)
-               decode
-               res)
+  pure (either (Left <<< show) decode res)
+
+
+-------------------------------------------------------------------------------
+getTopic :: forall eff. TopicId -> Aff ( ajax :: AJAX | eff) (Either String (Maybe Topic))
+getTopic (TopicId tid) = do
+  res <- attempt (get ("/topics/" <> show tid))
+  let decode reply = if reply.status == StatusCode 404
+                       then pure Nothing
+                       else map Just (decodeJson reply.response)
+  pure (either (Left <<< show) decode res)

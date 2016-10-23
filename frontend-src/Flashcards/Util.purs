@@ -1,6 +1,7 @@
 module Flashcards.Util
     ( splitAt
     , transpose
+    , containsCI
     ) where
 
 
@@ -8,6 +9,7 @@ module Flashcards.Util
 import Data.List as L
 import Data.Function.Uncurried (mkFn2, Fn2, runFn5, Fn5)
 import Data.Maybe (Maybe(Nothing, Just))
+import Data.String (toLower, contains)
 import Data.Tuple (Tuple(Tuple))
 import Prelude (map, (<<<))
 -------------------------------------------------------------------------------
@@ -33,3 +35,10 @@ transpose = toA <<< L.transpose <<< L.fromFoldable <<< toL
   where
     toL = L.fromFoldable <<< map L.fromFoldable
     toA = L.toUnfoldable <<< map L.toUnfoldable
+
+
+-------------------------------------------------------------------------------
+containsCI :: String -> String -> Boolean
+containsCI srch s = contains (toLower srch) (toLower s)
+
+
