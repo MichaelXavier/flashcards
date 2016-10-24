@@ -1,0 +1,11 @@
+---
+  -
+    id: 1
+    topic_id: 1
+    question: "Who was the first president of The United States of America?"
+    answer: "George Washington"
+  -
+    id: 2
+    topic_id: 2
+    question: "What is the state capital of Washington?"
+    answer: "Olympia"

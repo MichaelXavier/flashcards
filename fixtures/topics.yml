@@ -1,13 +1,13 @@
 ---
   -
     id: 1
-    title: "First topic"
+    title: "US Presidents"
     card_count: 13
     last_quizzed: "3 days ago"
     avg_score: 75
   -
     id: 2
-    title: "Second topic"
+    title: "US State Capitals"
     card_count: 10
     last_quizzed: "Never"
     avg_score: null
