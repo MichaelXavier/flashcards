@@ -73,7 +73,7 @@ instance decodeJsonTopic :: DecodeJson Topic where
 -------------------------------------------------------------------------------
 getTopics :: forall eff. Aff ( ajax :: AJAX | eff) (Either String (Array Topic))
 getTopics = do
-  res <- attempt (get "/topics")
+  res <- attempt (get "/api/topics")
   let decode reply = decodeJson reply.response
   pure (either (Left <<< show) decode res)
 
@@ -81,7 +81,7 @@ getTopics = do
 -------------------------------------------------------------------------------
 getTopic :: forall eff. TopicId -> Aff ( ajax :: AJAX | eff) (Either String (Maybe Topic))
 getTopic (TopicId tid) = do
-  res <- attempt (get ("/topics/" <> show tid))
+  res <- attempt (get ("/api/topics/" <> show tid))
   let decode reply = if reply.status == StatusCode 404
                        then pure Nothing
                        else map Just (decodeJson reply.response)

@@ -66,6 +66,6 @@ instance decodeJsonCard :: DecodeJson Card where
 -------------------------------------------------------------------------------
 getTopicCards :: forall eff. Topics.TopicId -> Aff ( ajax :: AJAX | eff) (Either String (Array Card))
 getTopicCards (Topics.TopicId tid) = do
-  res <- attempt (get ("/topics/" <> show tid <> "/cards"))
+  res <- attempt (get ("/api/topics/" <> show tid <> "/cards"))
   let decode reply = decodeJson reply.response
   pure (either (Left <<< show) decode res)

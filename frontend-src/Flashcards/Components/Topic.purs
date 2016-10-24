@@ -11,14 +11,15 @@ module Flashcards.Components.Topic
 import Flashcards.Client.Cards as Cards
 import Flashcards.Client.Topics as Topics
 import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
+import Data.Array (singleton)
 import Data.Either (Either(Right, Left))
-import Data.Maybe (fromMaybe, Maybe(Just, Nothing))
+import Data.Maybe (maybe, fromMaybe, Maybe(Just, Nothing))
 import Data.Monoid (mempty)
 import Data.Tuple (snd, fst, Tuple(Tuple))
 import Network.HTTP.Affjax (AJAX)
-import Prelude (pure, ($), bind, map)
+import Prelude ((<<<), pure, ($), bind, map)
 import Pux (noEffects, EffModel)
-import Pux.Html (span, (#), (##), div, (!), text, Html)
+import Pux.Html (button, span, (#), (##), div, (!), text, Html)
 import Pux.Html.Attributes (className)
 -------------------------------------------------------------------------------
 
@@ -66,8 +67,14 @@ view s = div ! className "container" ##
   , cardsView
   ]
   where
-    topicView = div ! className "row topic" #
-      text "TODO: topic view"
+    topicView = div ! className "row topic" ##
+      maybe noTopic (singleton <<< topicView') s.topic
+    noTopic = []
+    topicView' (Topics.Topic t) = div ! className "card col s11" ##
+        [ span ! className "card-title" # text t.title
+        , div ! className "card-action" #
+            button ! className "btn" # text "Add Card"
+        ]
     cardsView = div ! className "row cards" #
       div ! className "card-grid col s12" ##
         (map cardView s.cards)
