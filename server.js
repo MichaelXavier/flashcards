@@ -4,10 +4,6 @@ var yaml = require('yaml');
 var fs = require('fs');
 var cwd = require('process').cwd();
 
-app.use(function(req, res, next) {
-  console.log("early");
-  next();
-});
 app.use(express.static('static'));
 app.use(express.static('output'));
 
