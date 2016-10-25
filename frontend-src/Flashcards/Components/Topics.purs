@@ -22,6 +22,7 @@ import Data.Maybe (Maybe(Just, Nothing), maybe)
 import Data.Monoid ((<>), mempty)
 import Data.String (toLower)
 import Data.Tuple (Tuple(Tuple))
+import Flashcards.Client.Common (Entity(Entity), Id(Id))
 import Flashcards.Util (containsCI, splitAt)
 import Network.HTTP.Affjax (AJAX)
 import Prelude (class Show, show, map, (<<<))
@@ -33,7 +34,7 @@ import Pux.Router (link)
 -------------------------------------------------------------------------------
 
 
-type TopicsMap = M.Map Topics.TopicId Topics.Topic
+type TopicsMap = M.Map (Id Topics.Topic) (Entity Topics.Topic)
 
 
 -------------------------------------------------------------------------------
@@ -61,7 +62,7 @@ initialState = { topics: mempty
 
 -------------------------------------------------------------------------------
 data Action = RefreshTopics
-            | ReceiveTopics (Either String (Array Topics.Topic))
+            | ReceiveTopics (Either String (Array (Entity Topics.Topic)))
             | FilterTopics String
 
 
@@ -80,19 +81,19 @@ update (FilterTopics f) s = noEffects s { filterText = f }
 
 
 -------------------------------------------------------------------------------
-mapTopics :: Array Topics.Topic -> TopicsMap
+mapTopics :: Array (Entity Topics.Topic) -> TopicsMap
 mapTopics = M.fromFoldable <<< map toPair
   where
-    toPair topic@(Topics.Topic t) = Tuple t.id topic
+    toPair topic@(Entity { id: i }) = Tuple i topic
 
 
 -------------------------------------------------------------------------------
 --TODO: highlighting
-filterTopics :: String -> Array Topics.Topic -> Array Topics.Topic
+filterTopics :: String -> Array (Entity Topics.Topic) -> Array (Entity Topics.Topic)
 filterTopics "" ts = ts
 filterTopics srch ts = A.filter match ts
   where
-    match (Topics.Topic t) = containsCI srch t.title
+    match (Entity {val: Topics.Topic t}) = containsCI srch t.title
 
 
 -------------------------------------------------------------------------------
@@ -178,7 +179,7 @@ view s = div ! className "container" ##
       Loading -> [text "Loading..."]
       LoadError e -> [text e] --TODO; error formatting
       Loaded -> map topicView topics
-    topicView (Topics.Topic t) = div ! className "card topic" #
+    topicView (Entity {id: tid, val: Topics.Topic t}) = div ! className "card topic" #
       div ! className "card-content" ##
         [ span ! className "card-title" #
             link ("/topics/" <> tidS) ## hlText s.filterText t.title
@@ -189,5 +190,5 @@ view s = div ! className "container" ##
             ]
         ]
         where
-          tidS = case t.id of
-            Topics.TopicId tid -> show tid
+          tidS = case tid of
+            Id tid -> show tid

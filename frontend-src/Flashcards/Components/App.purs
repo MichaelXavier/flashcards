@@ -16,7 +16,8 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
-import Flashcards.Client.Topics (TopicId(TopicId))
+import Flashcards.Client.Common (Id(Id))
+import Flashcards.Client.Topics (TopicId)
 import Network.HTTP.Affjax (AJAX)
 import Prelude (show, (<$>), pure, map, (<$))
 import Pux (EffModel, mapEffects, mapState)
@@ -46,7 +47,7 @@ match url = PageView parse
           <|> TopicR <$> (lit "topics" *> topicId)
           <|> TopicsR <$ lit "topics"
     defRoute = TopicsR
-    topicId = TopicId <$> int
+    topicId = Id <$> int
 
 
 -------------------------------------------------------------------------------
@@ -97,7 +98,7 @@ view s = div ! className "container" ##
     crumbs NotFoundR = []
     crumbs TopicsR = [ topicsCrumb
                      ]
-    crumbs (TopicR (TopicId tid)) = [
+    crumbs (TopicR (Id tid)) = [
         topicsCrumb
       , link ("/topics" <> tidS) ! className "breadcrumb" # text tidS
       ]
