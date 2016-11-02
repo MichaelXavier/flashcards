@@ -14,6 +14,7 @@ import Flashcards.Components.Topic as Topic
 import Flashcards.Components.Topics as Topics
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
+import Data.Lens (lens, LensP, set)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Flashcards.Client.Common (Id(Id))
@@ -59,6 +60,16 @@ type State = {
 
 
 -------------------------------------------------------------------------------
+topicsStateL :: LensP State Topics.State
+topicsStateL = lens _.topicsState (_ { topicsState = _ })
+
+
+-------------------------------------------------------------------------------
+topicStateL :: LensP State Topic.State
+topicStateL = lens _.topicState (_ { topicState = _ })
+
+
+-------------------------------------------------------------------------------
 
 initialState :: State
 initialState = { currentRoute: TopicsR
@@ -77,8 +88,8 @@ update (PageView r) s = {
       _ -> []
   }
 update (TopicsAction a) s =
-  mapState (\ts -> s { topicsState = ts }) (mapEffects TopicsAction (Topics.update a s.topicsState))
-update (TopicAction a) s = mapState (\ts -> s { topicState = ts }) (mapEffects TopicAction (Topic.update a s.topicState))
+  mapState (\ts -> set topicsStateL ts s) (mapEffects TopicsAction (Topics.update a s.topicsState))
+update (TopicAction a) s = mapState (\ts -> set topicStateL ts s) (mapEffects TopicAction (Topic.update a s.topicState))
 
 
 -------------------------------------------------------------------------------

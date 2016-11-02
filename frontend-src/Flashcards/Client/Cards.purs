@@ -1,5 +1,8 @@
 module Flashcards.Client.Cards
     ( Card(..)
+    , topic_idL
+    , questionL
+    , answerL
     , newCard
     , CardId(..)
     , getTopicCards
@@ -13,6 +16,7 @@ import Control.Monad.Aff (attempt, Aff)
 import Data.Argonaut (jsonEmptyObject, (~>), (:=), class EncodeJson, encodeJson, (.?), decodeJson, class DecodeJson)
 import Data.Either (either, Either(Left))
 import Data.Generic (class Generic)
+import Data.Lens (lens, LensP)
 import Data.Monoid (mempty, (<>))
 import Flashcards.Client.Common (Entity, Id(Id))
 import Network.HTTP.Affjax (post, get, AJAX)
@@ -59,6 +63,21 @@ instance encodeJsonCard :: EncodeJson Card where
                      ~> "question" := c.question
                      ~> "answer" := c.answer
                      ~> jsonEmptyObject
+
+
+-------------------------------------------------------------------------------
+-- Lenses
+-------------------------------------------------------------------------------
+topic_idL :: LensP Card Topics.TopicId
+topic_idL = lens (\(Card c) -> c.topic_id) (\(Card c) x -> Card (c { topic_id = x}))
+
+
+questionL :: LensP Card String
+questionL = lens (\(Card c) -> c.question) (\(Card c) x -> Card (c { question = x}))
+
+
+answerL :: LensP Card String
+answerL = lens (\(Card c) -> c.answer) (\(Card c) x -> Card (c { answer = x}))
 
 
 -------------------------------------------------------------------------------

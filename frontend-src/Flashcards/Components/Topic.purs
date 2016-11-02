@@ -13,9 +13,11 @@ import Flashcards.Client.Topics as Topics
 import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
 import Data.Array ((:), singleton)
 import Data.Either (Either(Right, Left))
+import Data.Lens (setJust, lens, LensP, set)
 import Data.Maybe (isJust, maybe, fromMaybe, Maybe(Just, Nothing))
 import Data.Monoid ((<>), mempty)
 import Data.Tuple (snd, fst, Tuple(Tuple))
+import Flashcards.Client.Cards (answerL, questionL)
 import Flashcards.Client.Common (Entity(Entity))
 import Network.HTTP.Affjax (AJAX)
 import Prelude (unit, Unit, const, (<<<), pure, ($), bind, map)
@@ -45,6 +47,11 @@ type State = {
 
 
 -------------------------------------------------------------------------------
+newCardL :: LensP State (Maybe Cards.Card)
+newCardL = lens _.newCard (_ { newCard = _ })
+
+
+-------------------------------------------------------------------------------
 initialState :: State
 initialState = { topic: Nothing, cards: mempty, newCard: Nothing }
 
@@ -67,7 +74,7 @@ update (ReceiveTopic (Left e)) s = noEffects s
 update (ReceiveTopic (Right t)) s = noEffects s { topic = map fst t
                                                 , cards = fromMaybe mempty (map snd t)
                                                 }
-update NewCard (s@{topic: Just (Entity e)}) = noEffects (s { newCard = Just (Cards.newCard e.id) })
+update NewCard (s@{topic: Just (Entity e)}) = noEffects (setJust newCardL (Cards.newCard e.id) s)
 update NewCard s = noEffects s -- should not be possible. noop
 update SaveCard s@{newCard: Just c} = {
       state: s
@@ -79,18 +86,17 @@ update SaveCard s@{newCard: Just c} = {
 update SaveCard s = noEffects s
 update (ReceiveSaveCard (Left e)) s = noEffects s
 update (ReceiveSaveCard (Right e)) s = {
-      state: s { newCard = Nothing }
+      state: set newCardL Nothing s
     , effects: case s.topic of
          Just (Entity e) -> [pure (RefreshTopic e.id)]
          Nothing -> []
     }
 update CancelNewCard s = noEffects s { newCard = Nothing }
--- man, i want a lens
-update (EditCardQuestion q) (s@{newCard: Just (Cards.Card c)}) =
-  noEffects (s { newCard = Just (Cards.Card c {question = q}) })
+update (EditCardQuestion q) (s@{newCard: Just c}) =
+  noEffects (s { newCard = Just (set questionL q c) })
 update (EditCardQuestion q) s = noEffects s
-update (EditCardAnswer a) (s@{newCard: Just (Cards.Card c)}) =
-  noEffects (s { newCard = Just (Cards.Card c {answer = a}) })
+update (EditCardAnswer a) (s@{newCard: Just c}) =
+  noEffects (s { newCard = Just (set answerL a c) })
 update (EditCardAnswer a) s = noEffects s
 
 
