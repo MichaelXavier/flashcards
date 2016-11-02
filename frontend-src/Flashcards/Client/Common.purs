@@ -5,7 +5,7 @@ module Flashcards.Client.Common
 
 
 -------------------------------------------------------------------------------
-import Data.Argonaut ((.?), decodeJson, class DecodeJson)
+import Data.Argonaut (encodeJson, class EncodeJson, (.?), decodeJson, class DecodeJson)
 import Data.Generic (gShow, gCompare, gEq, class Generic)
 import Prelude (pure, map, (<<<), class Show, class Ord, class Eq, bind)
 -------------------------------------------------------------------------------
@@ -41,3 +41,5 @@ instance ordId :: Ord (Id a) where compare = gCompare
 instance showId :: (Show a, Generic a) => Show (Id a) where show = gShow
 instance decodeJsonId :: DecodeJson (Id a) where
   decodeJson = map Id <<< decodeJson
+instance encodeJsonId :: EncodeJson (Id a) where
+  encodeJson (Id i) = encodeJson i

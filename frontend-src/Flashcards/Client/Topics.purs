@@ -3,19 +3,20 @@ module Flashcards.Client.Topics
     , TopicId
     , getTopics
     , getTopic
+    , createTopic
     ) where
 
 
 -------------------------------------------------------------------------------
 import Control.Applicative ((<*>), (<$>))
 import Control.Monad.Aff (attempt, Aff)
-import Data.Argonaut (class DecodeJson, decodeJson, (.?))
+import Data.Argonaut (encodeJson, jsonEmptyObject, (~>), (:=), class EncodeJson, class DecodeJson, decodeJson, (.?))
 import Data.Either (either, Either(Left))
 import Data.Generic (class Generic)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Monoid ((<>))
 import Flashcards.Client.Common (Entity, Id(Id))
-import Network.HTTP.Affjax (get, AJAX)
+import Network.HTTP.Affjax (post, get, AJAX)
 import Network.HTTP.StatusCode (StatusCode(StatusCode))
 import Prelude (($), (==), map, show, pure, bind, (<<<))
 -------------------------------------------------------------------------------
@@ -51,6 +52,14 @@ instance decodeJsonTopic :: DecodeJson Topic where
       })
 
 
+instance encodeJsonTopic :: EncodeJson Topic where
+  encodeJson (Topic t) = "title" := t.title
+                      ~> "card_count" := t.card_count
+                      ~> "last_quizzed" := t.last_quizzed
+                      ~> "avg_score" := t.avg_score
+                      ~> jsonEmptyObject
+
+
 -------------------------------------------------------------------------------
 getTopics :: forall eff. Aff ( ajax :: AJAX | eff) (Either String (Array (Entity Topic)))
 getTopics = do
@@ -66,4 +75,12 @@ getTopic (Id tid) = do
   let decode reply = if reply.status == StatusCode 404
                        then pure Nothing
                        else map Just (decodeJson reply.response)
+  pure (either (Left <<< show) decode res)
+
+
+-------------------------------------------------------------------------------
+createTopic :: forall eff. Topic -> Aff ( ajax :: AJAX | eff) (Either String (Entity Topic))
+createTopic t = do
+  res <- attempt (post "/api/topics" (encodeJson t))
+  let decode reply = decodeJson reply.response
   pure (either (Left <<< show) decode res)
