@@ -6,6 +6,7 @@ module Main
 -------------------------------------------------------------------------------
 import Flashcards.Components.App as App
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import DOM (DOM)
 import Network.HTTP.Affjax (AJAX)
@@ -21,6 +22,7 @@ main
                        , channel :: CHANNEL
                        , err :: EXCEPTION
                        , ajax :: AJAX
+                       , console :: CONSOLE
                        | eff) Unit
 main = do
   urlSignal <- sampleUrl

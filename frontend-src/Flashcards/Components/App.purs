@@ -14,6 +14,7 @@ import Flashcards.Components.Topic as Topic
 import Flashcards.Components.Topics as Topics
 import Control.Alt ((<|>))
 import Control.Apply ((*>))
+import Control.Monad.Eff.Console (CONSOLE)
 import DOM (DOM)
 import Data.Lens (lens, LensP, set)
 import Data.Maybe (fromMaybe)
@@ -80,7 +81,7 @@ initialState = { currentRoute: TopicsR
 
 
 -------------------------------------------------------------------------------
-update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX, dom :: DOM | eff)
+update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX, dom :: DOM, console :: CONSOLE | eff)
 update (PageView r) s = {
     state: s { currentRoute = r }
   , effects: case r of

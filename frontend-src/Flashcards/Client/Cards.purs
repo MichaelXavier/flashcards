@@ -15,12 +15,13 @@ module Flashcards.Client.Cards
 import Flashcards.Client.Topics as Topics
 import Control.Monad.Aff (attempt, Aff)
 import Data.Argonaut (jsonEmptyObject, (~>), (:=), class EncodeJson, encodeJson, (.?), decodeJson, class DecodeJson)
+import Data.Bifunctor (bimap)
 import Data.Either (either, Either(Left))
 import Data.Generic (class Generic)
 import Data.Lens (lens, LensP)
 import Data.Monoid (mempty, (<>))
 import Flashcards.Client.Common (Entity, Id(Id))
-import Network.HTTP.Affjax (delete, post, get, AJAX)
+import Network.HTTP.Affjax (AJAX, delete_, post, get)
 import Prelude (Unit, show, pure, bind, (<<<))
 -------------------------------------------------------------------------------
 
@@ -103,6 +104,5 @@ createCard c@(Card card) = do
 -------------------------------------------------------------------------------
 deleteTopicCard :: forall eff. Topics.TopicId -> CardId -> Aff ( ajax :: AJAX | eff) (Either String Unit)
 deleteTopicCard (Id tid) (Id cid) = do
-  res <- attempt (delete ("/api/topics/" <> show tid <> "/cards/" <> show cid))
-  let decode reply = decodeJson reply.response
-  pure (either (Left <<< show) decode res)
+  res <- attempt (delete_ ("/api/topics/" <> show tid <> "/cards/" <> show cid))
+  pure (bimap show _.response res)

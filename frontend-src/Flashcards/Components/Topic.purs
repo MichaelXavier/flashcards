@@ -12,6 +12,8 @@ import Data.Lens as L
 import Flashcards.Client.Cards as Cards
 import Flashcards.Client.Topics as Topics
 import Flashcards.Components.DeleteConfirm as DeleteConfirm
+import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
 import DOM (DOM)
 import Data.Array ((:), singleton)
@@ -24,7 +26,7 @@ import Flashcards.Client.Cards (answerL, questionL)
 import Flashcards.Client.Common (eId, eVal, Entity(Entity))
 import Flashcards.Util (effectsL)
 import Network.HTTP.Affjax (AJAX)
-import Prelude (unit, Unit, const, (<<<), pure, ($), bind, map)
+import Prelude (id, unit, Unit, const, (<<<), pure, ($), bind, map)
 import Pux (mapState, mapEffects, noEffects, EffModel)
 import Pux.Html (h4, a, Html, div, text, button, span, input, form, (##), (!), (#))
 import Pux.Html.Attributes (className, href, placeholder, name, value, type_, disabled)
@@ -44,6 +46,7 @@ data Action = RefreshTopic Topics.TopicId
             | DeleteConfirmAction DeleteConfirm.Action
             | CardNotDeleted String
             | CardDeleted
+            | Nop
 
 
 -------------------------------------------------------------------------------
@@ -82,7 +85,7 @@ initialState = { topic: Nothing
 
 
 -------------------------------------------------------------------------------
-update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX, dom :: DOM | eff)
+update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX, dom :: DOM, console :: CONSOLE | eff)
 update (RefreshTopic tid) s = {
       state: s
     , effects: [getJoined]
@@ -129,8 +132,11 @@ update (StartDeletingCard cid) s = {
     }
 --TODO: capture confirm action and also delete
 update (DeleteConfirmAction a) s =
-  appendOver effectsL addEffs effModel
+  mapState whatOfDeletingCard (appendOver effectsL addEffs effModel)
   where
+     whatOfDeletingCard = case a of
+       DeleteConfirm.CancelDelete -> set deletingCardL Nothing
+       _ -> id
      --TODO: cancel delete, clear deletingCard
      effModel = mapState (\dcs -> set deleteConfirmStateL dcs s) (mapEffects DeleteConfirmAction (DeleteConfirm.update a s.deleteConfirmState))
      deleteCard = fromMaybe [] $ do
@@ -140,12 +146,21 @@ update (DeleteConfirmAction a) s =
      addEffs = case a of
         DeleteConfirm.ConfirmDelete -> deleteCard
         _ -> []
-update (CardNotDeleted _) s = noEffects s
+update (CardNotDeleted e) s = {
+      state: s
+    , effects: [do
+          liftEff (log e)
+          pure Nop
+        ]
+    }
 update CardDeleted s@{ topic: Just t} = {
       state: s
-    , effects: [pure (RefreshTopic (L.view eId t))]
+    , effects: [do
+          pure (RefreshTopic (L.view eId t))
+        ]
     }
 update CardDeleted s = noEffects s
+update Nop s = noEffects s
 
 
 -------------------------------------------------------------------------------
