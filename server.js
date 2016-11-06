@@ -57,6 +57,12 @@ app.post('/api/topics/:topic_id/cards', function(req, res) {
   res.json(card);
 });
 
+app.delete('/api/topics/:topic_id/cards/:id', function(req, res) {
+  var cardID = parseID(req.params.topic_id);
+  cardsTable = cardsTable.filter(function(x) { return x.id != cardID;});
+  res.end();
+});
+
 
 // This lets us link to pages in the app
 app.use(function(req, res, next) {

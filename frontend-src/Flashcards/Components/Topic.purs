@@ -8,22 +8,26 @@ module Flashcards.Components.Topic
 
 
 -------------------------------------------------------------------------------
+import Data.Lens as L
 import Flashcards.Client.Cards as Cards
 import Flashcards.Client.Topics as Topics
+import Flashcards.Components.DeleteConfirm as DeleteConfirm
 import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
+import DOM (DOM)
 import Data.Array ((:), singleton)
-import Data.Either (Either(Right, Left))
-import Data.Lens (setJust, lens, LensP, set)
+import Data.Either (either, Either(Right, Left))
+import Data.Lens (appendOver, setJust, lens, LensP, set)
 import Data.Maybe (isJust, maybe, fromMaybe, Maybe(Just, Nothing))
 import Data.Monoid ((<>), mempty)
 import Data.Tuple (snd, fst, Tuple(Tuple))
 import Flashcards.Client.Cards (answerL, questionL)
-import Flashcards.Client.Common (Entity(Entity))
+import Flashcards.Client.Common (eId, eVal, Entity(Entity))
+import Flashcards.Util (effectsL)
 import Network.HTTP.Affjax (AJAX)
 import Prelude (unit, Unit, const, (<<<), pure, ($), bind, map)
-import Pux (noEffects, EffModel)
-import Pux.Html (label, input, form, button, span, (#), (##), div, (!), text, Html)
-import Pux.Html.Attributes (id_, htmlFor, name, value, type_, disabled, className)
+import Pux (mapState, mapEffects, noEffects, EffModel)
+import Pux.Html (h4, a, Html, div, text, button, span, input, form, (##), (!), (#))
+import Pux.Html.Attributes (className, href, placeholder, name, value, type_, disabled)
 import Pux.Html.Events (onChange, onSubmit, onClick)
 -------------------------------------------------------------------------------
 
@@ -36,6 +40,10 @@ data Action = RefreshTopic Topics.TopicId
             | CancelNewCard
             | EditCardQuestion String
             | EditCardAnswer String
+            | StartDeletingCard Cards.CardId
+            | DeleteConfirmAction DeleteConfirm.Action
+            | CardNotDeleted String
+            | CardDeleted
 
 
 -------------------------------------------------------------------------------
@@ -43,6 +51,8 @@ type State = {
       topic :: Maybe (Entity Topics.Topic)
     , cards :: Array (Entity Cards.Card)
     , newCard :: Maybe Cards.Card
+    , deletingCard :: Maybe Cards.CardId
+    , deleteConfirmState :: DeleteConfirm.State
     }
 
 
@@ -52,12 +62,27 @@ newCardL = lens _.newCard (_ { newCard = _ })
 
 
 -------------------------------------------------------------------------------
-initialState :: State
-initialState = { topic: Nothing, cards: mempty, newCard: Nothing }
+deletingCardL :: LensP State (Maybe Cards.CardId)
+deletingCardL = lens _.deletingCard (_ { deletingCard = _ })
 
 
 -------------------------------------------------------------------------------
-update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX | eff)
+deleteConfirmStateL :: LensP State DeleteConfirm.State
+deleteConfirmStateL = lens _.deleteConfirmState (_ { deleteConfirmState = _ })
+
+
+-------------------------------------------------------------------------------
+initialState :: State
+initialState = { topic: Nothing
+               , cards: mempty
+               , newCard: Nothing
+               , deletingCard: Nothing
+               , deleteConfirmState: DeleteConfirm.initialState "topic-delete-card"
+               }
+
+
+-------------------------------------------------------------------------------
+update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX, dom :: DOM | eff)
 update (RefreshTopic tid) s = {
       state: s
     , effects: [getJoined]
@@ -98,6 +123,29 @@ update (EditCardQuestion q) s = noEffects s
 update (EditCardAnswer a) (s@{newCard: Just c}) =
   noEffects (s { newCard = Just (set answerL a c) })
 update (EditCardAnswer a) s = noEffects s
+update (StartDeletingCard cid) s = {
+      state: setJust deletingCardL cid s
+    , effects: [pure (DeleteConfirmAction DeleteConfirm.RaiseDialog)]
+    }
+--TODO: capture confirm action and also delete
+update (DeleteConfirmAction a) s =
+  appendOver effectsL addEffs effModel
+  where
+     --TODO: cancel delete, clear deletingCard
+     effModel = mapState (\dcs -> set deleteConfirmStateL dcs s) (mapEffects DeleteConfirmAction (DeleteConfirm.update a s.deleteConfirmState))
+     deleteCard = fromMaybe [] $ do
+       t <- s.topic
+       cid <- s.deletingCard
+       pure [map (either CardNotDeleted (const CardDeleted)) (Cards.deleteTopicCard (L.view eId t) cid)]
+     addEffs = case a of
+        DeleteConfirm.ConfirmDelete -> deleteCard
+        _ -> []
+update (CardNotDeleted _) s = noEffects s
+update CardDeleted s@{ topic: Just t} = {
+      state: s
+    , effects: [pure (RefreshTopic (L.view eId t))]
+    }
+update CardDeleted s = noEffects s
 
 
 -------------------------------------------------------------------------------
@@ -105,8 +153,11 @@ view :: State -> Html Action
 view s = div ! className "container" ##
   [ topicView
   , cardsView
+  , deleteDialog
   ]
   where
+    deleteDialog = map DeleteConfirmAction (DeleteConfirm.view dialogContent s.deleteConfirmState)
+    dialogContent = h4 # text "Are you sure about that?"
     creatingCard = isJust s.newCard
     topicView = div ! className "row topic" ##
       maybe noTopic (singleton <<< topicView') s.topic
@@ -121,35 +172,34 @@ view s = div ! className "container" ##
         ]
     newCardView c = form ! className "card new-card"
                          ! onSubmit (const SaveCard) ##
-      [ newCardForm c
-      , div ! className "card-action" ##
-          [ div ! className "btn"
-                ! onClick (const CancelNewCard) #
+      newCardForm c <> [
+        div ! className "card-action" ##
+          [ a ! href "#" ! onClick (const CancelNewCard) #
               text "Cancel"
-          , button ! type_ "submit" !
-                   className "btn" #
+          , a ! href "#" ! onClick (const SaveCard) #
               text "Save"
           ]
       ]
-    --TODO: input field
-    newCardForm (Cards.Card c) = div ! className "input-field" ##
-      [input
-        [ type_ "text"
-        , value c.question
-        , name "question"
-        , id_ "question"
-        , onChange (EditCardQuestion <<< _.value <<< _.target)
-        ] []
-      , label ! htmlFor "question" # text "Question" --TODO: is htmlFor what i want?
-      --TODO: split to different input-field
-      , input
-        [ type_ "text"
-        , value c.answer
-        , name "answer"
-        , id_ "answer"
-        , onChange (EditCardAnswer <<< _.value <<< _.target)
-        ] []
-      , label ! htmlFor "answer" # text "Answer" --TODO: is htmlFor what i want?
+    inputField children = div ! className "input-field" ## children
+    newCardForm (Cards.Card c) = [
+        inputField
+          [ input
+            [ type_ "text"
+            , value c.question
+            , name "question"
+            , onChange (EditCardQuestion <<< _.value <<< _.target)
+            , placeholder "Question"
+            ] []
+          ]
+      , inputField
+          [ input
+            [ type_ "text"
+            , value c.answer
+            , name "answer"
+            , onChange (EditCardAnswer <<< _.value <<< _.target)
+            , placeholder "Answer"
+            ] []
+          ]
       ]
     cardsView = div ! className "row cards" #
       div ! className "card-grid col s12" ##
@@ -157,6 +207,14 @@ view s = div ! className "container" ##
           Just c -> (newCardView c):existingCards
           Nothing -> existingCards
     existingCards = map cardView s.cards
-    cardView (Entity {val: Cards.Card c}) = div ! className "card" #
-      div ! className "card-content" #
-        span ! className "card-title" # text c.question
+    cardView e = div ! className "card" #
+      div ! className "card-content" ##
+        [ span ! className "card-title" # text (L.view questionL card)
+        , div ! className "card-action" ##
+            [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard cid)) #
+                text "Delete"
+            ]
+        ]
+      where
+        card = L.view eVal e
+        cid = L.view eId e

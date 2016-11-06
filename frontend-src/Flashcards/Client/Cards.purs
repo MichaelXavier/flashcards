@@ -7,6 +7,7 @@ module Flashcards.Client.Cards
     , CardId(..)
     , getTopicCards
     , createCard
+    , deleteTopicCard
     ) where
 
 
@@ -19,8 +20,8 @@ import Data.Generic (class Generic)
 import Data.Lens (lens, LensP)
 import Data.Monoid (mempty, (<>))
 import Flashcards.Client.Common (Entity, Id(Id))
-import Network.HTTP.Affjax (post, get, AJAX)
-import Prelude (show, pure, bind, (<<<))
+import Network.HTTP.Affjax (delete, post, get, AJAX)
+import Prelude (Unit, show, pure, bind, (<<<))
 -------------------------------------------------------------------------------
 
 
@@ -97,3 +98,11 @@ createCard c@(Card card) = do
   where
     tid = case card.topic_id of
       Id i -> show i
+
+
+-------------------------------------------------------------------------------
+deleteTopicCard :: forall eff. Topics.TopicId -> CardId -> Aff ( ajax :: AJAX | eff) (Either String Unit)
+deleteTopicCard (Id tid) (Id cid) = do
+  res <- attempt (delete ("/api/topics/" <> show tid <> "/cards/" <> show cid))
+  let decode reply = decodeJson reply.response
+  pure (either (Left <<< show) decode res)

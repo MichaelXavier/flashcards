@@ -2,16 +2,25 @@ module Flashcards.Util
     ( splitAt
     , transpose
     , containsCI
+    , initModal
+    , openModal
+    , closeModal
+    , effectsL
+    , stateL
     ) where
 
 
 -------------------------------------------------------------------------------
 import Data.List as L
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.JQuery (JQuery)
+import DOM (DOM)
 import Data.Function.Uncurried (mkFn2, Fn2, runFn5, Fn5)
+import Data.Lens (lens, Lens)
 import Data.Maybe (Maybe(Nothing, Just))
 import Data.String (toLower, contains)
 import Data.Tuple (Tuple(Tuple))
-import Prelude (map, (<<<))
+import Prelude (Unit, map, (<<<))
 -------------------------------------------------------------------------------
 
 
@@ -42,3 +51,17 @@ containsCI :: String -> String -> Boolean
 containsCI srch s = contains (toLower srch) (toLower s)
 
 
+-------------------------------------------------------------------------------
+foreign import initModal :: forall eff. JQuery -> Eff (dom :: DOM | eff) Unit
+foreign import openModal :: forall eff. JQuery -> Eff (dom :: DOM | eff) Unit
+foreign import closeModal :: forall eff. JQuery -> Eff (dom :: DOM | eff) Unit
+
+
+-------------------------------------------------------------------------------
+effectsL :: forall a b r. Lens { effects :: a | r } { effects :: b | r } a b
+effectsL = lens _.effects (_ { effects = _ })
+
+
+-------------------------------------------------------------------------------
+stateL :: forall a b r. Lens { state :: a | r } { state :: b | r } a b
+stateL = lens _.state (_ { state = _ })
