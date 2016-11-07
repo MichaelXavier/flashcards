@@ -179,7 +179,7 @@ view s = div ! className "container" ##
       Loading -> [text "Loading..."]
       LoadError e -> [text e] --TODO; error formatting
       Loaded -> map topicView topics
-    topicView (Entity {id: tid, val: Topics.Topic t}) = div ! className "card topic" #
+    topicView (Entity {id: tid, val: Topics.Topic t}) = div ! className "card s12 topic" #
       div ! className "card-content" ##
         [ span ! className "card-title" #
             link ("/topics/" <> tidS) ## hlText s.filterText t.title

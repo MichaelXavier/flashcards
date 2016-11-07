@@ -28,7 +28,7 @@ import Flashcards.Util (effectsL)
 import Network.HTTP.Affjax (AJAX)
 import Prelude (id, unit, Unit, const, (<<<), pure, ($), bind, map)
 import Pux (mapState, mapEffects, noEffects, EffModel)
-import Pux.Html (h4, a, Html, div, text, button, span, input, form, (##), (!), (#))
+import Pux.Html (Html, div, text, a, span, input, form, button, h4, (##), (!), (#))
 import Pux.Html.Attributes (className, href, placeholder, name, value, type_, disabled)
 import Pux.Html.Events (onChange, onSubmit, onClick)
 -------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ view s = div ! className "container" ##
     topicView = div ! className "row topic" ##
       maybe noTopic (singleton <<< topicView') s.topic
     noTopic = []
-    topicView' (Entity {val: Topics.Topic t}) = div ! className "card col s11" ##
+    topicView' (Entity {val: Topics.Topic t}) = div ! className "card col s12" ##
         [ span ! className "card-title" # text t.title
         , div ! className "card-action" #
             button ! className "btn" !
@@ -185,7 +185,7 @@ view s = div ! className "container" ##
               onClick (const NewCard) #
               text "Add Card"
         ]
-    newCardView c = form ! className "card new-card"
+    newCardView c = form ! className "card new-card s12"
                          ! onSubmit (const SaveCard) ##
       newCardForm c <> [
         div ! className "card-action" ##
@@ -216,15 +216,15 @@ view s = div ! className "container" ##
             ] []
           ]
       ]
-    cardsView = div ! className "row cards" #
-      div ! className "card-grid col s12" ##
-        case s.newCard of
-          Just c -> (newCardView c):existingCards
-          Nothing -> existingCards
+    cardsView = div ! className "row cards" ##
+      case s.newCard of
+        Just c -> (newCardView c):existingCards
+        Nothing -> existingCards
     existingCards = map cardView s.cards
-    cardView e = div ! className "card" #
+    cardView e = div ! className "card s12" #
       div ! className "card-content" ##
         [ span ! className "card-title" # text (L.view questionL card)
+          --TOOD: expander for the answer
         , div ! className "card-action" ##
             [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard cid)) #
                 text "Delete"
