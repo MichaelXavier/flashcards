@@ -180,7 +180,7 @@ view s = div ! className "container" ##
     topicView' (Entity {val: Topics.Topic t}) = div ! className "card col s12" ##
         [ span ! className "card-title" # text t.title
         , div ! className "card-action" #
-            button ! className "btn" !
+            a ! href "#" !
               disabled creatingCard !
               onClick (const NewCard) #
               text "Add Card"
