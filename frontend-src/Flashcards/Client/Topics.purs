@@ -1,5 +1,6 @@
 module Flashcards.Client.Topics
     ( Topic(..)
+    , titleL
     , TopicId
     , getTopics
     , getTopic
@@ -13,6 +14,7 @@ import Control.Monad.Aff (attempt, Aff)
 import Data.Argonaut (encodeJson, jsonEmptyObject, (~>), (:=), class EncodeJson, class DecodeJson, decodeJson, (.?))
 import Data.Either (either, Either(Left))
 import Data.Generic (class Generic)
+import Data.Lens (LensP, lens)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Monoid ((<>))
 import Flashcards.Client.Common (Entity, Id(Id))
@@ -58,6 +60,12 @@ instance encodeJsonTopic :: EncodeJson Topic where
                       ~> "last_quizzed" := t.last_quizzed
                       ~> "avg_score" := t.avg_score
                       ~> jsonEmptyObject
+
+
+-------------------------------------------------------------------------------
+titleL :: LensP Topic String
+titleL = lens (\(Topic t) -> t.title) (\(Topic t) x -> Topic (t { title = x}))
+
 
 
 -------------------------------------------------------------------------------

@@ -10,6 +10,7 @@ module Flashcards.Components.App
 
 
 -------------------------------------------------------------------------------
+import Data.Lens as L
 import Flashcards.Components.Topic as Topic
 import Flashcards.Components.Topics as Topics
 import Control.Alt ((<|>))
@@ -17,12 +18,12 @@ import Control.Apply ((*>))
 import Control.Monad.Eff.Console (CONSOLE)
 import DOM (DOM)
 import Data.Lens (lens, LensP, set)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (Maybe(Nothing, Just), fromMaybe)
 import Data.Monoid ((<>))
-import Flashcards.Client.Common (Id(Id))
-import Flashcards.Client.Topics (TopicId)
+import Flashcards.Client.Common (eVal, Id(Id))
+import Flashcards.Client.Topics (titleL, TopicId)
 import Network.HTTP.Affjax (AJAX)
-import Prelude (show, (<$>), pure, map, (<$))
+import Prelude ((<<<), show, (<$>), pure, map, (<$))
 import Pux (EffModel, mapEffects, mapState)
 import Pux.Html (Html, div, text, nav, (##), (!), (#))
 import Pux.Html.Attributes (className)
@@ -113,8 +114,11 @@ view s = div ! className "container" ##
                      ]
     crumbs (TopicR (Id tid)) = [
         topicsCrumb
-      , link ("/topics" <> tidS) ! className "breadcrumb" # text tidS
+      , link ("/topics" <> tidS) ! className "breadcrumb" # text topicS
       ]
       where
         tidS = show tid
+        topicS = case s.topicState.topic of
+          Just t -> L.view (eVal <<< titleL) t
+          Nothing -> tidS
     topicsCrumb = link "/topics" ! className "breadcrumb" # text "Topics"
