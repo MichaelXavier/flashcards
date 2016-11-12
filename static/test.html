@@ -1,45 +1,89 @@
 <!doctype html>
 <html>
   <head>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/css/materialize.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/css/materialize.min.css">
     <script src="http://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.7/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/js/materialize.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="app.css">
   </head>
   <body>
     <div class="container">
       <div class="row">
-        <div class="col s4 offset-s4 flip-container">
-          <div class="card flipper">
-            <div class="front card-content">
-              <!-- <span class="question card-title">Who was the first president of the United States of America?</span> -->
-              <span class="question card-title">Short question?</span>
-            </div>
-
-            <div class="back card-content">
-              <span class="card-answer card-title">George Washington</span>
-              <div class="card-action">
-                <a class="wrong-answer red-text" href="#">Missed it!</a>
-                <a class="right-answer green-text" href="#">Got it!</a>
+        <div class="card s12">
+          <div class="card-content">
+            <div class="card-title">Some question goes here?</div>
+            <div class="card-action expander">
+              <div class="expand row">
+                <div class="col s11">Show Answer</div>
+                <i class="material-icons col s1">keyboard_arrow_down</i>
+              </div>
+              <div class="collapse row">
+                <div class="col s11">Hide Answer</div>
+                <i class="material-icons col s1">keyboard_arrow_up</i>
+              </div>
+              <div class="expander-reveal row card-title">
+                An answer goes here
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="row">
-        <div class="col s4 offset-s4 distribute">
-          <div class="btn">Prev</div>
-          <div class="topic-progress grey-text">3/10</div>
-          <div class="btn">Skip</div>
-        </div>
-      </div>
     </div>
 
     <script type="text/javascript">
-     var flipper = document.querySelector('.flipper')
-     flipper.addEventListener('click', function() {
-       flipper.classList.toggle('flip');
+     /* var flipper = document.querySelector('.flipper')
+      * flipper.addEventListener('click', function() {
+      *   flipper.classList.toggle('flip');
+      * });*/
+    </script>
+    <style>
+     .expander-reveal {
+       overflow-y: hidden;
+	     max-height: 500px; /* approximate max height */
+
+	     transition-property: all;
+	     transition-duration: .5s;
+	     transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+     }
+
+     /* .expander .expand, .expander .collapse {
+        cursor: pointer;
+        }
+        .expander .collapse {
+        display: none;
+        }
+        .expander-reveal {
+        display: none;
+        } */
+    </style>
+    <script type="text/javascript">
+     $(function() {
+       var clearQueue = true;
+       var jumpToEnd = false;
+       var slideOpts = {
+         duration: 350,
+         easing: "easeOutQuart",
+         queue: false
+       };
+       $('.expander .expand').click(function(e) {
+         var expand = $(e.currentTarget);
+         var parent = expand.closest('.expander');
+         expand.hide();
+         parent.find('.collapse').show();
+         parent.find('.expander-reveal').
+                stop(clearQueue, jumpToEnd).
+                slideDown(slideOpts);
+       });
+       $('.expander .collapse').click(function(e) {
+         var collapse = $(e.currentTarget);
+         var parent = collapse.closest('.expander');
+         collapse.hide();
+         parent.find('.expand').show();
+         parent.find('.expander-reveal').
+                stop(clearQueue, jumpToEnd).
+                slideUp(slideOpts);
+       });
      });
     </script>
   </body>

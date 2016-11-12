@@ -7,6 +7,9 @@ module Flashcards.Util
     , closeModal
     , effectsL
     , stateL
+    , slideUp
+    , slideDown
+    , SlideOptions
     ) where
 
 
@@ -15,7 +18,7 @@ import Data.List as L
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.JQuery (JQuery)
 import DOM (DOM)
-import Data.Function.Uncurried (mkFn2, Fn2, runFn5, Fn5)
+import Data.Function.Uncurried (runFn2, mkFn2, Fn2, runFn5, Fn5)
 import Data.Lens (lens, Lens)
 import Data.Maybe (Maybe(Nothing, Just))
 import Data.String (toLower, contains)
@@ -55,7 +58,26 @@ containsCI srch s = contains (toLower srch) (toLower s)
 foreign import initModal :: forall eff. JQuery -> Eff (dom :: DOM | eff) Unit
 foreign import openModal :: forall eff. JQuery -> Eff (dom :: DOM | eff) Unit
 foreign import closeModal :: forall eff. JQuery -> Eff (dom :: DOM | eff) Unit
+foreign import slideUpImpl :: forall eff. Fn2 JQuery SlideOptions (Eff (dom :: DOM | eff) Unit)
+foreign import slideDownImpl :: forall eff. Fn2 JQuery SlideOptions (Eff (dom :: DOM | eff) Unit)
 
+
+-------------------------------------------------------------------------------
+slideUp :: forall eff. JQuery -> SlideOptions -> Eff (dom :: DOM | eff) Unit
+slideUp = runFn2 slideUpImpl
+
+
+-------------------------------------------------------------------------------
+slideDown :: forall eff. JQuery -> SlideOptions -> Eff (dom :: DOM | eff) Unit
+slideDown = runFn2 slideDownImpl
+
+
+-------------------------------------------------------------------------------
+type SlideOptions = {
+      duration :: Int
+    , easing :: String
+    , queue :: Boolean
+    }
 
 -------------------------------------------------------------------------------
 effectsL :: forall a b r. Lens { effects :: a | r } { effects :: b | r } a b

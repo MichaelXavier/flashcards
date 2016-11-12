@@ -22,3 +22,15 @@ exports.closeModal = function(elements) {
     elements.modal('close');
   };
 };
+
+exports.slideUpImpl = function(elements, options) {
+  return function() {
+    elements.slideUp(options);
+  };
+};
+
+exports.slideDownImpl  = function(elements, options) {
+  return function() {
+    elements.slideDown(options);
+  };
+};

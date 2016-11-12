@@ -10,7 +10,7 @@ module Flashcards.Client.Common
 import Data.Argonaut (encodeJson, class EncodeJson, (.?), decodeJson, class DecodeJson)
 import Data.Generic (gShow, gCompare, gEq, class Generic)
 import Data.Lens (lens, LensP)
-import Prelude (pure, map, (<<<), class Show, class Ord, class Eq, bind)
+import Prelude (show, pure, map, (<<<), class Show, class Ord, class Eq, bind)
 -------------------------------------------------------------------------------
 
 
@@ -52,7 +52,8 @@ derive instance genericId :: Generic (Id a)
 
 instance eqId :: Eq (Id a) where eq = gEq
 instance ordId :: Ord (Id a) where compare = gCompare
-instance showId :: (Show a, Generic a) => Show (Id a) where show = gShow
+instance showId :: Show (Id a) where
+  show (Id i) = show i
 instance decodeJsonId :: DecodeJson (Id a) where
   decodeJson = map Id <<< decodeJson
 instance encodeJsonId :: EncodeJson (Id a) where

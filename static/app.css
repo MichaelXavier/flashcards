@@ -54,3 +54,13 @@
     font-size: 1.3rem;
     font-weight: bold;
 }
+
+
+/* Expansion panel */
+.expander .expand, .expander .collapse {
+    cursor: pointer;
+}
+
+.expander-reveal {
+    display: none;
+}

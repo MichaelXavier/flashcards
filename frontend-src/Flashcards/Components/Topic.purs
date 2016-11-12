@@ -1,6 +1,7 @@
 module Flashcards.Components.Topic
     ( Action(..)
     , State(..)
+    , CardState
     , initialState
     , update
     , view
@@ -12,13 +13,15 @@ import Data.Lens as L
 import Flashcards.Client.Cards as Cards
 import Flashcards.Client.Topics as Topics
 import Flashcards.Components.DeleteConfirm as DeleteConfirm
+import Flashcards.Components.ExpansionPanel as ExpansionPanel
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
 import DOM (DOM)
-import Data.Array ((:), singleton)
+import Data.Array (mapWithIndex, singleton, index, (:))
 import Data.Either (either, Either(Right, Left))
-import Data.Lens (appendOver, setJust, lens, LensP, set)
+import Data.Lens (LensP, set, appendOver, setJust, lens)
+import Data.Lens.Index (ix)
 import Data.Maybe (isJust, maybe, fromMaybe, Maybe(Just, Nothing))
 import Data.Monoid ((<>), mempty)
 import Data.Tuple (snd, fst, Tuple(Tuple))
@@ -26,9 +29,9 @@ import Flashcards.Client.Cards (answerL, questionL)
 import Flashcards.Client.Common (eId, eVal, Entity(Entity))
 import Flashcards.Util (effectsL)
 import Network.HTTP.Affjax (AJAX)
-import Prelude (id, unit, Unit, const, (<<<), pure, ($), bind, map)
+import Prelude (show, id, unit, Unit, const, (<<<), pure, ($), bind, map)
 import Pux (mapState, mapEffects, noEffects, EffModel)
-import Pux.Html (Html, div, text, a, span, input, form, button, h4, (##), (!), (#))
+import Pux.Html (Html, div, text, a, span, input, form, h4, (##), (!), (#))
 import Pux.Html.Attributes (className, href, placeholder, name, value, type_, disabled)
 import Pux.Html.Events (onChange, onSubmit, onClick)
 -------------------------------------------------------------------------------
@@ -47,12 +50,13 @@ data Action = RefreshTopic Topics.TopicId
             | CardNotDeleted String
             | CardDeleted
             | Nop
+            | CardExpansionAction Int ExpansionPanel.Action
 
 
 -------------------------------------------------------------------------------
 type State = {
       topic :: Maybe (Entity Topics.Topic)
-    , cards :: Array (Entity Cards.Card)
+    , cards :: Array CardState
     , newCard :: Maybe Cards.Card
     , deletingCard :: Maybe Cards.CardId
     , deleteConfirmState :: DeleteConfirm.State
@@ -60,8 +64,25 @@ type State = {
 
 
 -------------------------------------------------------------------------------
+type CardState = {
+      card :: Entity Cards.Card
+    , exp :: ExpansionPanel.State
+    }
+
+
+-------------------------------------------------------------------------------
+expL :: LensP CardState ExpansionPanel.State
+expL = lens _.exp (_ { exp = _ })
+
+
+-------------------------------------------------------------------------------
 newCardL :: LensP State (Maybe Cards.Card)
 newCardL = lens _.newCard (_ { newCard = _ })
+
+
+-------------------------------------------------------------------------------
+cardsL :: LensP State (Array CardState)
+cardsL = lens _.cards (_ { cards = _ })
 
 
 -------------------------------------------------------------------------------
@@ -100,8 +121,10 @@ update (RefreshTopic tid) s = {
         Nothing -> pure Nothing
 update (ReceiveTopic (Left e)) s = noEffects s
 update (ReceiveTopic (Right t)) s = noEffects s { topic = map fst t
-                                                , cards = fromMaybe mempty (map snd t)
+                                                , cards = fromMaybe mempty (map (map newCardState <<< snd) t)
                                                 }
+  where
+    newCardState c = { card: c, exp: { expanded: false, id: ("card-expand-" <> show (L.view eId c)) } }
 update NewCard (s@{topic: Just (Entity e)}) = noEffects (setJust newCardL (Cards.newCard e.id) s)
 update NewCard s = noEffects s -- should not be possible. noop
 update SaveCard s@{newCard: Just c} = {
@@ -161,6 +184,11 @@ update CardDeleted s@{ topic: Just t} = {
     }
 update CardDeleted s = noEffects s
 update Nop s = noEffects s
+--TODO: use a lens + At to update card state, extract this
+update (CardExpansionAction idx a) s =
+  case index s.cards idx of
+    Just cardState -> mapState (\expState -> set (cardsL <<< ix idx <<< expL) expState s) (mapEffects (CardExpansionAction idx) (ExpansionPanel.update a cardState.exp))
+    Nothing -> noEffects s
 
 
 -------------------------------------------------------------------------------
@@ -186,7 +214,7 @@ view s = div ! className "container" ##
               text "Add Card"
         ]
     newCardView c = form ! className "card new-card s12"
-                         ! onSubmit (const SaveCard) ##
+                          ! onSubmit (const SaveCard) ##
       newCardForm c <> [
         div ! className "card-action" ##
           [ a ! href "#" ! onClick (const CancelNewCard) #
@@ -220,16 +248,30 @@ view s = div ! className "container" ##
       case s.newCard of
         Just c -> (newCardView c):existingCards
         Nothing -> existingCards
-    existingCards = map cardView s.cards
-    cardView e = div ! className "card s12" #
+    existingCards :: Array (Html Action)
+    existingCards = mapWithIndex cardView s.cards
+    -- composing stateful components gets annoying
+    cardView :: Int -> CardState -> Html Action
+    cardView idx cs = div ! className "card s12" #
       div ! className "card-content" ##
         [ span ! className "card-title" # text (L.view questionL card)
-          --TOOD: expander for the answer
+        , map (CardExpansionAction idx) (ExpansionPanel.view cs.exp)
         , div ! className "card-action" ##
             [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard cid)) #
                 text "Delete"
             ]
         ]
       where
+        e = cs.card
         card = L.view eVal e
         cid = L.view eId e
+
+
+--TODO: extract?
+-- also this sucks because you need to address individual cards
+type TopicCardState = {
+      card :: Entity Cards.Card
+    , expansion :: ExpansionPanel.State
+    }
+
+
