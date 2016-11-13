@@ -1,6 +1,5 @@
 module Flashcards.Components.ExpansionPanel
     ( State(..)
-    , initialState
     , Action(..)
     , update
     , view
@@ -10,7 +9,6 @@ module Flashcards.Components.ExpansionPanel
 -------------------------------------------------------------------------------
 import Control.Monad.Eff.JQuery as JQuery
 import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.JQuery (Selector)
 import DOM (DOM)
 import Data.Monoid ((<>))
 import Flashcards.Util (slideUp, slideDown)
@@ -27,10 +25,6 @@ type State = {
       expanded :: Boolean
     , id       :: String
     }
-
-
-initialState :: Selector -> State
-initialState id = { expanded: false, id: id }
 
 
 data Action = Expand
@@ -63,17 +57,17 @@ update Nop s = noEffects s
 -- If you make simple components just a view function, you don't need an update function for them
 -- https://groups.google.com/forum/#!topic/elm-discuss/_cfOu88oCx4 suggests keeping your app as one component as long as possible, return triples from page updates
 -- this *sounds* promising http://package.elm-lang.org/packages/debois/elm-parts/latest/
-view :: State -> Html Action
-view s = div ! className "expander" ! id_ s.id ##
+view :: State -> Html Action -> Html Action -> Html Action -> Html Action
+view s expandLabel collapseLabel content = div ! className "expander" ! id_ s.id ##
   [ div ! className showClass ! onClick (const Expand) ##
-      [ div ! className "col s11" # text "Show Answer"
+      [ div ! className "col s11" # expandLabel
       , i ! className "material-icons col s1" # text "keyboard_arrow_down"
       ]
   , div ! className collapseClass ! onClick (const Collapse) ##
-      [ div ! className "col s11" # text "Hide Answer"
+      [ div ! className "col s11" # collapseLabel
       , i ! className "material-icons col s1" # text "keyboard_arrow_up"
       ]
-  , div ! className "expander-reveal row" # text "Content goes here"
+  , div ! className "expander-reveal row" # content
   ]
   where
     showClass

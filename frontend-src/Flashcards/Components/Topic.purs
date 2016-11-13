@@ -124,7 +124,11 @@ update (ReceiveTopic (Right t)) s = noEffects s { topic = map fst t
                                                 , cards = fromMaybe mempty (map (map newCardState <<< snd) t)
                                                 }
   where
-    newCardState c = { card: c, exp: { expanded: false, id: ("card-expand-" <> show (L.view eId c)) } }
+    newCardState c = { card: c
+                     , exp: { expanded: false
+                            , id: ("card-expand-" <> show (L.view eId c))
+                            }
+                     }
 update NewCard (s@{topic: Just (Entity e)}) = noEffects (setJust newCardL (Cards.newCard e.id) s)
 update NewCard s = noEffects s -- should not be possible. noop
 update SaveCard s@{newCard: Just c} = {
@@ -255,7 +259,11 @@ view s = div ! className "container" ##
     cardView idx cs = div ! className "card s12" #
       div ! className "card-content" ##
         [ span ! className "card-title" # text (L.view questionL card)
-        , map (CardExpansionAction idx) (ExpansionPanel.view cs.exp)
+        , map (CardExpansionAction idx) (ExpansionPanel.view
+                                         cs.exp
+                                         (text "Show Answer")
+                                         (text "Hide Answer")
+                                         (text (L.view answerL card))) --TODO: format it
         , div ! className "card-action" ##
             [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard cid)) #
                 text "Delete"
