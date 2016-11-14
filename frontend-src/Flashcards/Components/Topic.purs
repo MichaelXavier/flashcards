@@ -263,13 +263,16 @@ view s = div ! className "container" ##
                                          cs.exp
                                          (text "Show Answer")
                                          (text "Hide Answer")
-                                         (text (L.view answerL card))) --TODO: format it
+                                         answer)
         , div ! className "card-action" ##
             [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard cid)) #
                 text "Delete"
             ]
         ]
       where
+        -- create special class for card title, color code?
+        answer = span ! className "card-title" #
+          text (L.view answerL card)
         e = cs.card
         card = L.view eVal e
         cid = L.view eId e

@@ -67,7 +67,8 @@ view s expandLabel collapseLabel content = div ! className "expander" ! id_ s.id
       [ div ! className "col s11" # collapseLabel
       , i ! className "material-icons col s1" # text "keyboard_arrow_up"
       ]
-  , div ! className "expander-reveal row" # content
+  , div ! className "expander-reveal row" #
+      div ! className "col" # content
   ]
   where
     showClass
