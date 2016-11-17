@@ -45,7 +45,7 @@ data Action = RefreshTopic Topics.TopicId
             | CancelNewCard
             | EditCardQuestion String
             | EditCardAnswer String
-            | StartDeletingCard Cards.CardId
+            | StartDeletingCard (Entity Cards.Card)
             | DeleteConfirmAction DeleteConfirm.Action
             | CardNotDeleted String
             | CardDeleted
@@ -58,7 +58,7 @@ type State = {
       topic :: Maybe (Entity Topics.Topic)
     , cards :: Array CardState
     , newCard :: Maybe Cards.Card
-    , deletingCard :: Maybe Cards.CardId
+    , deletingCard :: Maybe (Entity Cards.Card)
     , deleteConfirmState :: DeleteConfirm.State
     }
 
@@ -86,7 +86,7 @@ cardsL = lens _.cards (_ { cards = _ })
 
 
 -------------------------------------------------------------------------------
-deletingCardL :: LensP State (Maybe Cards.CardId)
+deletingCardL :: LensP State (Maybe (Entity Cards.Card))
 deletingCardL = lens _.deletingCard (_ { deletingCard = _ })
 
 
@@ -153,8 +153,8 @@ update (EditCardQuestion q) s = noEffects s
 update (EditCardAnswer a) (s@{newCard: Just c}) =
   noEffects (s { newCard = Just (set answerL a c) })
 update (EditCardAnswer a) s = noEffects s
-update (StartDeletingCard cid) s = {
-      state: setJust deletingCardL cid s
+update (StartDeletingCard c) s = {
+      state: setJust deletingCardL c s
     , effects: [pure (DeleteConfirmAction DeleteConfirm.RaiseDialog)]
     }
 --TODO: capture confirm action and also delete
@@ -168,8 +168,8 @@ update (DeleteConfirmAction a) s =
      effModel = mapState (\dcs -> set deleteConfirmStateL dcs s) (mapEffects DeleteConfirmAction (DeleteConfirm.update a s.deleteConfirmState))
      deleteCard = fromMaybe [] $ do
        t <- s.topic
-       cid <- s.deletingCard
-       pure [map (either CardNotDeleted (const CardDeleted)) (Cards.deleteTopicCard (L.view eId t) cid)]
+       cardE <- s.deletingCard
+       pure [map (either CardNotDeleted (const CardDeleted)) (Cards.deleteTopicCard (L.view eId t) (L.view eId cardE))]
      addEffs = case a of
         DeleteConfirm.ConfirmDelete -> deleteCard
         _ -> []
@@ -204,7 +204,9 @@ view s = div ! className "container" ##
   ]
   where
     deleteDialog = map DeleteConfirmAction (DeleteConfirm.view dialogContent s.deleteConfirmState)
-    dialogContent = h4 # text "Are you sure about that?"
+    dialogContent = case s.deletingCard of
+      Just c -> h4 # text ("Are you sure you want to delete \"" <> L.view (eVal <<< Cards.questionL) c <> "\"?")
+      Nothing -> text ""
     creatingCard = isJust s.newCard
     topicView = div ! className "row topic" ##
       maybe noTopic (singleton <<< topicView') s.topic
@@ -267,7 +269,7 @@ view s = div ! className "container" ##
                                          (text "Hide Answer")
                                          answer)
         , div ! className "card-action" ##
-            [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard cid)) #
+            [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard e)) #
                 text "Delete"
             ]
         ]
