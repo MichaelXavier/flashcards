@@ -227,26 +227,28 @@ view s = div ! className "container" ##
               text "Save"
           ]
       ]
-    inputField children = div ! className "input-field" ## children
+    inputField children = div ! className "input-field col" ## children
     newCardForm (Cards.Card c) = [
-        inputField
-          [ input
-            [ type_ "text"
-            , value c.question
-            , name "question"
-            , onChange (EditCardQuestion <<< _.value <<< _.target)
-            , placeholder "Question"
-            ] []
-          ]
-      , inputField
-          [ input
-            [ type_ "text"
-            , value c.answer
-            , name "answer"
-            , onChange (EditCardAnswer <<< _.value <<< _.target)
-            , placeholder "Answer"
-            ] []
-          ]
+        div ! className "row" #
+          inputField
+            [ input
+              [ type_ "text"
+              , value c.question
+              , name "question"
+              , onChange (EditCardQuestion <<< _.value <<< _.target)
+              , placeholder "Question"
+              ] []
+            ]
+        , div ! className "row" #
+            inputField
+              [ input
+                [ type_ "text"
+                , value c.answer
+                , name "answer"
+                , onChange (EditCardAnswer <<< _.value <<< _.target)
+                , placeholder "Answer"
+                ] []
+              ]
       ]
     cardsView = div ! className "row cards" ##
       case s.newCard of
