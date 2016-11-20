@@ -7,7 +7,7 @@ module Flashcards.Client.Common
 
 
 -------------------------------------------------------------------------------
-import Data.Argonaut (encodeJson, class EncodeJson, (.?), decodeJson, class DecodeJson)
+import Data.Argonaut ((~>), (:=), encodeJson, class EncodeJson, (.?), decodeJson, class DecodeJson)
 import Data.Generic (gShow, gCompare, gEq, class Generic)
 import Data.Lens (lens, LensP)
 import Prelude (show, pure, map, (<<<), class Show, class Ord, class Eq, bind)
@@ -41,6 +41,11 @@ instance decodeJsonEntity :: (DecodeJson a) => DecodeJson (Entity a) where
     id <- o .? "id"
     val <- decodeJson v
     pure (Entity { id: id, val: val})
+
+
+instance encodeJsonEntity :: (EncodeJson a) => EncodeJson (Entity a) where
+  encodeJson (Entity e) = "id" := e.id
+                       ~> encodeJson e.val
 
 
 -------------------------------------------------------------------------------

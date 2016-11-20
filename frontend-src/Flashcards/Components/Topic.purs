@@ -20,12 +20,12 @@ import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
 import DOM (DOM)
 import Data.Array (mapWithIndex, singleton, index, (:))
 import Data.Either (either, Either(Right, Left))
-import Data.Lens (LensP, set, appendOver, setJust, lens)
+import Data.Lens (_Just, over, LensP, set, appendOver, setJust, lens)
 import Data.Lens.Index (ix)
 import Data.Maybe (isJust, maybe, fromMaybe, Maybe(Just, Nothing))
 import Data.Monoid ((<>), mempty)
 import Data.Tuple (snd, fst, Tuple(Tuple))
-import Flashcards.Client.Cards (answerL, questionL)
+import Flashcards.Client.Cards (updateCard, answerL, questionL)
 import Flashcards.Client.Common (eId, eVal, Entity(Entity))
 import Flashcards.Util (effectsL)
 import Network.HTTP.Affjax (AJAX)
@@ -43,14 +43,19 @@ data Action = RefreshTopic Topics.TopicId
             | SaveCard
             | ReceiveSaveCard (Either String Unit)
             | CancelNewCard
-            | EditCardQuestion String
-            | EditCardAnswer String
+            | EditNewCardQuestion String
+            | EditNewCardAnswer String
             | StartDeletingCard (Entity Cards.Card)
             | DeleteConfirmAction DeleteConfirm.Action
             | CardNotDeleted String
             | CardDeleted
             | Nop
             | CardExpansionAction Int ExpansionPanel.Action
+            | StartEditingCard Int
+            | EditCardQuestion Int String
+            | EditCardAnswer Int String
+            | CancelEditingCard Int
+            | SaveEditingCard Int
 
 
 -------------------------------------------------------------------------------
@@ -67,12 +72,18 @@ type State = {
 type CardState = {
       card :: Entity Cards.Card
     , exp :: ExpansionPanel.State
+    , edit :: Maybe Cards.Card
     }
 
 
 -------------------------------------------------------------------------------
 expL :: LensP CardState ExpansionPanel.State
 expL = lens _.exp (_ { exp = _ })
+
+
+-------------------------------------------------------------------------------
+cardL :: LensP CardState (Entity Cards.Card)
+cardL = lens _.card (_ { card = _ })
 
 
 -------------------------------------------------------------------------------
@@ -83,6 +94,11 @@ newCardL = lens _.newCard (_ { newCard = _ })
 -------------------------------------------------------------------------------
 cardsL :: LensP State (Array CardState)
 cardsL = lens _.cards (_ { cards = _ })
+
+
+-------------------------------------------------------------------------------
+editL :: LensP CardState (Maybe Cards.Card)
+editL = lens _.edit (_ { edit = _ })
 
 
 -------------------------------------------------------------------------------
@@ -128,6 +144,7 @@ update (ReceiveTopic (Right t)) s = noEffects s { topic = map fst t
                      , exp: { expanded: false
                             , id: ("card-expand-" <> show (L.view eId c))
                             }
+                     , edit: Nothing
                      }
 update NewCard (s@{topic: Just (Entity e)}) = noEffects (setJust newCardL (Cards.newCard e.id) s)
 update NewCard s = noEffects s -- should not be possible. noop
@@ -147,12 +164,12 @@ update (ReceiveSaveCard (Right e)) s = {
          Nothing -> []
     }
 update CancelNewCard s = noEffects s { newCard = Nothing }
-update (EditCardQuestion q) (s@{newCard: Just c}) =
+update (EditNewCardQuestion q) (s@{newCard: Just c}) =
   noEffects (s { newCard = Just (set questionL q c) })
-update (EditCardQuestion q) s = noEffects s
-update (EditCardAnswer a) (s@{newCard: Just c}) =
+update (EditNewCardQuestion q) s = noEffects s
+update (EditNewCardAnswer a) (s@{newCard: Just c}) =
   noEffects (s { newCard = Just (set answerL a c) })
-update (EditCardAnswer a) s = noEffects s
+update (EditNewCardAnswer a) s = noEffects s
 update (StartDeletingCard c) s = {
       state: setJust deletingCardL c s
     , effects: [pure (DeleteConfirmAction DeleteConfirm.RaiseDialog)]
@@ -193,6 +210,26 @@ update (CardExpansionAction idx a) s =
   case index s.cards idx of
     Just cardState -> mapState (\expState -> set (cardsL <<< ix idx <<< expL) expState s) (mapEffects (CardExpansionAction idx) (ExpansionPanel.update a cardState.exp))
     Nothing -> noEffects s
+update (EditCardQuestion idx v) s = noEffects (set (cardsL <<< ix idx <<< editL <<< _Just <<< questionL) v s)
+update (EditCardAnswer idx v) s = noEffects (set (cardsL <<< ix idx <<< editL <<< _Just <<< answerL) v s)
+update (CancelEditingCard idx) s = noEffects (set (cardsL <<< ix idx <<< editL) Nothing s)
+update (StartEditingCard idx) s = noEffects (over (cardsL <<< ix idx) prepareCardEdit s)
+  where
+    prepareCardEdit :: CardState -> CardState
+    prepareCardEdit cs = cs { edit = Just (L.view eVal cs.card)}
+update (SaveEditingCard idx) s = fromMaybe baseEffModel $ do
+  cs <- index s.cards idx
+  editCard <- cs.edit
+  let newEnt = set eVal editCard cs.card
+  pure $ baseEffModel {
+    state = set (cardsL <<< ix idx <<< cardL) newEnt baseEffModel.state
+  , effects = [do
+      _ <- updateCard newEnt
+      pure Nop
+    ]
+  }
+  where
+    baseEffModel = noEffects (set (cardsL <<< ix idx <<< editL) Nothing s)
 
 
 -------------------------------------------------------------------------------
@@ -229,15 +266,15 @@ view s = div ! className "container" ##
               text "Save"
           ]
       ]
-    inputField children = div ! className "input-field col" ## children
-    newCardForm (Cards.Card c) = [
+    cardForm editQuestionAction editAnswerAction (Cards.Card c) =
+      [
         div ! className "row" #
           inputField
             [ input
               [ type_ "text"
               , value c.question
               , name "question"
-              , onChange (EditCardQuestion <<< _.value <<< _.target)
+              , onChange (editQuestionAction <<< _.value <<< _.target)
               , placeholder "Question"
               ] []
             ]
@@ -247,11 +284,13 @@ view s = div ! className "container" ##
                 [ type_ "text"
                 , value c.answer
                 , name "answer"
-                , onChange (EditCardAnswer <<< _.value <<< _.target)
+                , onChange (editAnswerAction <<< _.value <<< _.target)
                 , placeholder "Answer"
                 ] []
               ]
       ]
+    inputField children = div ! className "input-field col" ## children
+    newCardForm = cardForm EditNewCardQuestion EditNewCardAnswer
     cardsView = div ! className "row cards" ##
       case s.newCard of
         Just c -> (newCardView c):existingCards
@@ -260,19 +299,32 @@ view s = div ! className "container" ##
     existingCards = mapWithIndex cardView s.cards
     -- composing stateful components gets annoying
     cardView :: Int -> CardState -> Html Action
+    --cardView idx { edit: Just editCard } = text "TODO: edit card"
     cardView idx cs = div ! className "card s12" #
       div ! className "card-content" ##
-        [ span ! className "card-title" # text (L.view questionL card)
-        , map (CardExpansionAction idx) (ExpansionPanel.view
-                                         cs.exp
-                                         (text "Show Answer")
-                                         (text "Hide Answer")
-                                         answer)
-        , div ! className "card-action" ##
-            [ a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard e)) #
-                text "Delete"
+        case cs.edit of
+          Nothing ->
+            [ span ! className "card-title" # text (L.view questionL card)
+            , map (CardExpansionAction idx) (ExpansionPanel.view
+                                             cs.exp
+                                             (text "Show Answer")
+                                             (text "Hide Answer")
+                                             answer)
+            , div ! className "card-action" ##
+                [ a ! href "#" ! onClick (const (StartEditingCard idx)) #
+                    text "Edit"
+                , a ! href "#confirm-card-delete" ! className "red-text" ! onClick (const (StartDeletingCard e)) #
+                    text "Delete"
+                ]
             ]
-        ]
+          Just c -> cardForm (EditCardQuestion idx) (EditCardAnswer idx) c <>
+            [ div ! className "card-action" ##
+                [ a ! href "#" ! onClick (const (CancelEditingCard idx)) #
+                    text "Cancel"
+                , a ! href "#" ! onClick (const (SaveEditingCard idx)) #
+                    text "Save"
+                ]
+            ]
       where
         -- create special class for card title, color code?
         answer = span ! className "card-title" #
@@ -288,5 +340,3 @@ type TopicCardState = {
       card :: Entity Cards.Card
     , expansion :: ExpansionPanel.State
     }
-
-

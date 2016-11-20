@@ -57,6 +57,19 @@ app.post('/api/topics/:topic_id/cards', function(req, res) {
   res.json(card);
 });
 
+app.put('/api/topics/:topic_id/cards/:id', function(req, res) {
+  var cardID = parseID(req.params.topic_id);
+  var card = req.body;
+  var idx = cardsTable.findIndex(function(x) { return x.id == cardID;});
+  if (idx > -1) {
+    cardsTable[idx] = card;
+    res.end();
+  } else {
+    res.status(404).end();
+  }
+});
+
+
 app.delete('/api/topics/:topic_id/cards/:id', function(req, res) {
   var cardID = parseID(req.params.topic_id);
   cardsTable = cardsTable.filter(function(x) { return x.id != cardID;});

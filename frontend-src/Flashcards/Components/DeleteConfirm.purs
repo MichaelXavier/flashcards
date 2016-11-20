@@ -64,7 +64,7 @@ view :: Html Action -> State -> Html Action
 view content s = div ! className "modal" ! id_ s.elementId ##
   [ div ! className "modal-content" # content
   , div ! className "modal-footer" ##
-      [ a ! href "#" ! className "modal-action modal-close red btn-flat" ! onClick (const ConfirmDelete) # text "Delete"
+      [ a ! href "#" ! className "modal-action modal-close red white-text btn-flat" ! onClick (const ConfirmDelete) # text "Delete"
       , a ! href "#" ! className "modal-action modal-close btn-flat" ! onClick (const CancelDelete) # text "Cancel"
       ]
   ]

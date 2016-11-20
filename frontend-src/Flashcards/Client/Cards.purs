@@ -7,6 +7,7 @@ module Flashcards.Client.Cards
     , CardId(..)
     , getTopicCards
     , createCard
+    , updateCard
     , deleteTopicCard
     ) where
 
@@ -18,10 +19,10 @@ import Data.Argonaut (jsonEmptyObject, (~>), (:=), class EncodeJson, encodeJson,
 import Data.Bifunctor (bimap)
 import Data.Either (either, Either(Left))
 import Data.Generic (class Generic)
-import Data.Lens (lens, LensP)
+import Data.Lens (view, lens, LensP)
 import Data.Monoid (mempty, (<>))
-import Flashcards.Client.Common (Entity, Id(Id))
-import Network.HTTP.Affjax (AJAX, delete_, post, get)
+import Flashcards.Client.Common (eId, eVal, Entity, Id(Id))
+import Network.HTTP.Affjax (put_, AJAX, delete_, post, get)
 import Prelude (Unit, show, pure, bind, (<<<))
 -------------------------------------------------------------------------------
 
@@ -99,6 +100,18 @@ createCard c@(Card card) = do
   where
     tid = case card.topic_id of
       Id i -> show i
+
+
+-------------------------------------------------------------------------------
+updateCard :: forall eff. Entity Card -> Aff ( ajax :: AJAX | eff) (Either String Unit)
+updateCard e = do
+  res <- attempt (put_ ("/api/topics/" <> show tid <> "/cards/" <> show cid) (encodeJson e))
+  pure (bimap show _.response res)
+  where
+    card = view eVal e
+    cid = view eId e
+    tid = view topic_idL card
+
 
 
 -------------------------------------------------------------------------------
