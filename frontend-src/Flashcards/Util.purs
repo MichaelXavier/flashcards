@@ -21,7 +21,7 @@ import DOM (DOM)
 import Data.Function.Uncurried (runFn2, mkFn2, Fn2, runFn5, Fn5)
 import Data.Lens (lens, Lens)
 import Data.Maybe (Maybe(Nothing, Just))
-import Data.String (toLower, contains)
+import Data.String (toLower, contains, Pattern(Pattern))
 import Data.Tuple (Tuple(Tuple))
 import Prelude (Unit, map, (<<<))
 -------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ transpose = toA <<< L.transpose <<< L.fromFoldable <<< toL
 
 -------------------------------------------------------------------------------
 containsCI :: String -> String -> Boolean
-containsCI srch s = contains (toLower srch) (toLower s)
+containsCI srch s = contains (Pattern (toLower srch)) (toLower s)
 
 
 -------------------------------------------------------------------------------

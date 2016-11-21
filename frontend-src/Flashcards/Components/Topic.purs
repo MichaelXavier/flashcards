@@ -20,7 +20,7 @@ import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
 import DOM (DOM)
 import Data.Array (mapWithIndex, singleton, index, (:))
 import Data.Either (either, Either(Right, Left))
-import Data.Lens (_Just, over, LensP, set, appendOver, setJust, lens)
+import Data.Lens (_Just, over, Lens', set, appendOver, setJust, lens)
 import Data.Lens.Index (ix)
 import Data.Maybe (isJust, maybe, fromMaybe, Maybe(Just, Nothing))
 import Data.Monoid ((<>), mempty)
@@ -77,37 +77,37 @@ type CardState = {
 
 
 -------------------------------------------------------------------------------
-expL :: LensP CardState ExpansionPanel.State
+expL :: Lens' CardState ExpansionPanel.State
 expL = lens _.exp (_ { exp = _ })
 
 
 -------------------------------------------------------------------------------
-cardL :: LensP CardState (Entity Cards.Card)
+cardL :: Lens' CardState (Entity Cards.Card)
 cardL = lens _.card (_ { card = _ })
 
 
 -------------------------------------------------------------------------------
-newCardL :: LensP State (Maybe Cards.Card)
+newCardL :: Lens' State (Maybe Cards.Card)
 newCardL = lens _.newCard (_ { newCard = _ })
 
 
 -------------------------------------------------------------------------------
-cardsL :: LensP State (Array CardState)
+cardsL :: Lens' State (Array CardState)
 cardsL = lens _.cards (_ { cards = _ })
 
 
 -------------------------------------------------------------------------------
-editL :: LensP CardState (Maybe Cards.Card)
+editL :: Lens' CardState (Maybe Cards.Card)
 editL = lens _.edit (_ { edit = _ })
 
 
 -------------------------------------------------------------------------------
-deletingCardL :: LensP State (Maybe (Entity Cards.Card))
+deletingCardL :: Lens' State (Maybe (Entity Cards.Card))
 deletingCardL = lens _.deletingCard (_ { deletingCard = _ })
 
 
 -------------------------------------------------------------------------------
-deleteConfirmStateL :: LensP State DeleteConfirm.State
+deleteConfirmStateL :: Lens' State DeleteConfirm.State
 deleteConfirmStateL = lens _.deleteConfirmState (_ { deleteConfirmState = _ })
 
 
@@ -157,7 +157,7 @@ update SaveCard s@{newCard: Just c} = {
       map (ReceiveSaveCard <<< map (const unit)) (Cards.createCard c)
 update SaveCard s = noEffects s
 update (ReceiveSaveCard (Left e)) s = noEffects s
-update (ReceiveSaveCard (Right e)) s = {
+update (ReceiveSaveCard (Right _)) s = {
       state: set newCardL Nothing s
     , effects: case s.topic of
          Just (Entity e) -> [pure (RefreshTopic e.id)]

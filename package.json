@@ -6,8 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "server": "node server.js",
-    "build": "pulp browserify --to output/index.js --src-path frontend-src",
-    "watch": "pulp --watch browserify --to output/index.js --src-path frontend-src"
+    "build": "pulp browserify --to output/index.js --src-path frontend-src --strict",
+    "watch": "pulp --watch browserify --to output/index.js --src-path frontend-src --strict"
   },
   "keywords": [],
   "author": "",

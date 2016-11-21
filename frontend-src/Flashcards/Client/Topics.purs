@@ -14,7 +14,7 @@ import Control.Monad.Aff (attempt, Aff)
 import Data.Argonaut (encodeJson, jsonEmptyObject, (~>), (:=), class EncodeJson, class DecodeJson, decodeJson, (.?))
 import Data.Either (either, Either(Left))
 import Data.Generic (class Generic)
-import Data.Lens (LensP, lens)
+import Data.Lens (Lens', lens)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Monoid ((<>))
 import Flashcards.Client.Common (Entity, Id(Id))
@@ -63,7 +63,7 @@ instance encodeJsonTopic :: EncodeJson Topic where
 
 
 -------------------------------------------------------------------------------
-titleL :: LensP Topic String
+titleL :: Lens' Topic String
 titleL = lens (\(Topic t) -> t.title) (\(Topic t) x -> Topic (t { title = x}))
 
 

@@ -20,7 +20,7 @@ import Flashcards.Client.Topics as Topics
 import Data.Either (Either(Right, Left))
 import Data.Maybe (Maybe(Just, Nothing), maybe)
 import Data.Monoid ((<>), mempty)
-import Data.String (toLower)
+import Data.String (toLower, Pattern(Pattern))
 import Data.Tuple (Tuple(Tuple))
 import Flashcards.Client.Common (Entity(Entity), Id(Id))
 import Flashcards.Util (containsCI, splitAt)
@@ -122,7 +122,7 @@ hlText' "" full = [Unmarked full]
 hlText' srch full = go [] full
   where
     srchLen = S.length srch
-    srchL = toLower srch
+    srchL = Pattern (toLower srch)
     go acc "" = acc
     go acc s = let mIdx = S.indexOf srchL sL
                in case mIdx of
@@ -191,4 +191,4 @@ view s = div ! className "container" ##
         ]
         where
           tidS = case tid of
-            Id tid -> show tid
+            Id x -> show x

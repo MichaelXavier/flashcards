@@ -9,7 +9,7 @@ module Flashcards.Client.Common
 -------------------------------------------------------------------------------
 import Data.Argonaut ((~>), (:=), encodeJson, class EncodeJson, (.?), decodeJson, class DecodeJson)
 import Data.Generic (gShow, gCompare, gEq, class Generic)
-import Data.Lens (lens, LensP)
+import Data.Lens (lens, Lens')
 import Prelude (show, pure, map, (<<<), class Show, class Ord, class Eq, bind)
 -------------------------------------------------------------------------------
 
@@ -19,12 +19,12 @@ newtype Entity a = Entity { id :: Id a, val:: a}
 
 
 -------------------------------------------------------------------------------
-eId :: forall a. LensP (Entity a) (Id a)
+eId :: forall a. Lens' (Entity a) (Id a)
 eId = lens (\(Entity e) -> e.id) (\(Entity e) x -> Entity (e { id = x}))
 
 
 -------------------------------------------------------------------------------
-eVal :: forall a. LensP (Entity a) a
+eVal :: forall a. Lens' (Entity a) a
 eVal = lens (\(Entity e) -> e.val) (\(Entity e) x -> Entity (e { val = x}))
 
 

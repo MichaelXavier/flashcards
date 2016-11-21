@@ -17,7 +17,7 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad.Eff.Console (CONSOLE)
 import DOM (DOM)
-import Data.Lens (lens, LensP, set)
+import Data.Lens (lens, Lens', set)
 import Data.Maybe (Maybe(Nothing, Just), fromMaybe)
 import Data.Monoid ((<>))
 import Flashcards.Client.Common (eVal, Id(Id))
@@ -63,12 +63,12 @@ type State = {
 
 
 -------------------------------------------------------------------------------
-topicsStateL :: LensP State Topics.State
+topicsStateL :: Lens' State Topics.State
 topicsStateL = lens _.topicsState (_ { topicsState = _ })
 
 
 -------------------------------------------------------------------------------
-topicStateL :: LensP State Topic.State
+topicStateL :: Lens' State Topic.State
 topicStateL = lens _.topicState (_ { topicState = _ })
 
 
