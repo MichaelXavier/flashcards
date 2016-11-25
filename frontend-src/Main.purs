@@ -5,16 +5,19 @@ module Main
 
 -------------------------------------------------------------------------------
 import Flashcards.Components.App as App
+import Flashcards.Components.Timer as Timer
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Eff.Timer (TIMER)
 import DOM (DOM)
 import Network.HTTP.Affjax (AJAX)
-import Prelude (Unit, bind)
+import Prelude (Unit, bind, map, (<<<))
 import Pux (renderToDOM, start)
 import Pux.Router (sampleUrl)
-import Signal ((~>))
+import Signal (constant, (~>))
 import Signal.Channel (CHANNEL)
+import Signal.Time (every, now, second)
 -------------------------------------------------------------------------------
 
 main
@@ -23,14 +26,18 @@ main
                        , err :: EXCEPTION
                        , ajax :: AJAX
                        , console :: CONSOLE
+                       , timer :: TIMER
                        | eff) Unit
 main = do
   urlSignal <- sampleUrl
   let routeSignal = urlSignal ~> App.match
+  currentTime <- now
+  let ticks = map (App.TimerAction <<< Timer.Tick) (every second)
+  -- hack alert
   app <- start
-    { initialState: App.initialState
+    { initialState: App.initialState currentTime
     , update: App.update
     , view: App.view
-    , inputs: [routeSignal]
+    , inputs: [routeSignal, ticks, constant (App.TimerAction (Timer.Start currentTime))]
     }
   renderToDOM "#app" app.html

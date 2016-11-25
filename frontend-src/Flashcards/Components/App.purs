@@ -11,6 +11,7 @@ module Flashcards.Components.App
 
 -------------------------------------------------------------------------------
 import Data.Lens as L
+import Flashcards.Components.Timer as Timer
 import Flashcards.Components.Topic as Topic
 import Flashcards.Components.Topics as Topics
 import Control.Alt ((<|>))
@@ -23,11 +24,12 @@ import Data.Monoid ((<>))
 import Flashcards.Client.Common (eVal, Id(Id))
 import Flashcards.Client.Topics (titleL, TopicId)
 import Network.HTTP.Affjax (AJAX)
-import Prelude ((<<<), show, (<$>), pure, map, (<$))
-import Pux (EffModel, mapEffects, mapState)
-import Pux.Html (Html, div, text, nav, (##), (!), (#))
+import Prelude (map, pure, show, (<$), (<$>), (<<<))
+import Pux (EffModel, mapEffects, mapState, noEffects)
+import Pux.Html (Html, div, nav, text, (!), (#), (##))
 import Pux.Html.Attributes (className)
 import Pux.Router (int, link, lit, end, router)
+import Signal.Time (Time)
 -------------------------------------------------------------------------------
 
 
@@ -40,6 +42,7 @@ data Route = TopicsR
 data Action = PageView Route
             | TopicsAction Topics.Action
             | TopicAction Topic.Action
+            | TimerAction Timer.Action
 
 
 -------------------------------------------------------------------------------
@@ -59,6 +62,7 @@ type State = {
       currentRoute :: Route
     , topicsState :: Topics.State
     , topicState :: Topic.State
+    , timerState :: Timer.State
     }
 
 
@@ -74,11 +78,13 @@ topicStateL = lens _.topicState (_ { topicState = _ })
 
 -------------------------------------------------------------------------------
 
-initialState :: State
-initialState = { currentRoute: TopicsR
-               , topicsState: Topics.initialState
-               , topicState: Topic.initialState
-               }
+initialState :: Time -> State
+initialState now = {
+      currentRoute: TopicsR
+    , topicsState: Topics.initialState
+    , topicState: Topic.initialState
+    , timerState: Timer.initialState
+    }
 
 
 -------------------------------------------------------------------------------
@@ -93,6 +99,7 @@ update (PageView r) s = {
 update (TopicsAction a) s =
   mapState (\ts -> set topicsStateL ts s) (mapEffects TopicsAction (Topics.update a s.topicsState))
 update (TopicAction a) s = mapState (\ts -> set topicStateL ts s) (mapEffects TopicAction (Topic.update a s.topicState))
+update (TimerAction a) s = noEffects s { timerState = Timer.update a s.timerState }
 
 
 -------------------------------------------------------------------------------
@@ -100,6 +107,7 @@ view :: State -> Html Action
 view s = div ! className "container" ##
   [ navigation
   , page s.currentRoute
+  , Timer.view s.timerState
   ]
   where
     page NotFoundR = text "Not found!"
