@@ -10,9 +10,10 @@ module Flashcards.Components.Timer
 
 
 -------------------------------------------------------------------------------
+import Data.String as S
 import Data.Int (floor, toNumber)
 import Data.Maybe (Maybe(Just, Nothing))
-import Prelude (div, mod, show, (-), (<>), (>))
+import Prelude (div, mod, otherwise, show, (-), (<>), (==), (>))
 import Pux.Html (Html, text)
 import Signal.Time (Time)
 -------------------------------------------------------------------------------
@@ -48,10 +49,12 @@ view s = text (formatDuration s.elapsed)
 
 
 -------------------------------------------------------------------------------
---TODO: zero-pad
 formatDuration :: Time -> String
-formatDuration millis = show mins <> "m" <> show secs <> "s"
+formatDuration millis = show mins <> "m" <> zeroPad (show secs) <> "s"
   where
     secsTotal = floor millis `div` 1000
     mins = secsTotal `div` 60
     secs = secsTotal `mod` 60
+    zeroPad s
+      | S.length s == 1 = "0" <> s
+      | otherwise = s
