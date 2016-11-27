@@ -17,13 +17,14 @@ import Control.Alt ((<|>))
 import Control.Apply ((*>))
 import Control.Monad.Eff.Console (CONSOLE)
 import DOM (DOM)
+import Data.Generic (class Generic, gShow)
 import Data.Lens (lens, Lens', set)
 import Data.Maybe (Maybe(Nothing, Just), fromMaybe)
 import Data.Monoid ((<>))
 import Flashcards.Client.Common (eVal, Id(Id))
 import Flashcards.Client.Topics (titleL, TopicId)
 import Network.HTTP.Affjax (AJAX)
-import Prelude (map, pure, show, (<$), (<$>), (<<<))
+import Prelude (class Show, map, pure, show, (<$), (<$>), (<<<))
 import Pux (EffModel, mapEffects, mapState, noEffects)
 import Pux.Html (Html, div, nav, text, (!), (#), (##))
 import Pux.Html.Attributes (className)
@@ -35,6 +36,12 @@ import Signal.Time (Time)
 data Route = TopicsR
            | TopicR TopicId
            | NotFoundR
+
+
+derive instance genericRoute :: Generic Route
+
+
+instance showRoute :: Show Route where show = gShow
 
 
 -------------------------------------------------------------------------------
@@ -91,7 +98,8 @@ update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX, do
 update (PageView r) s = {
     state: s { currentRoute = r }
   , effects: case r of
-      TopicsR -> [pure (TopicsAction Topics.RefreshTopics)]
+      TopicsR -> [ pure (TopicsAction Topics.RefreshTopics)
+                 ]
       TopicR tid -> [pure (TopicAction (Topic.RefreshTopic tid))]
       _ -> []
   }

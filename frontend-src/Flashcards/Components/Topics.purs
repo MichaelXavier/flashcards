@@ -88,7 +88,6 @@ mapTopics = M.fromFoldable <<< map toPair
 
 
 -------------------------------------------------------------------------------
---TODO: highlighting
 filterTopics :: String -> Array (Entity Topics.Topic) -> Array (Entity Topics.Topic)
 filterTopics "" ts = ts
 filterTopics srch ts = A.filter match ts

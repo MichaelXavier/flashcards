@@ -36,6 +36,8 @@ main = do
     { initialState: App.initialState currentTime
     , update: App.update
     , view: App.view
-    , inputs: [routeSignal, ticks]
+      -- oddly enough, if ticks comes after routeSignal it doesn't
+      -- load the page
+    , inputs: [ticks, routeSignal]
     }
   renderToDOM "#app" app.html
