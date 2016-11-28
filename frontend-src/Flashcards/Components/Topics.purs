@@ -1,7 +1,6 @@
 module Flashcards.Components.Topics
     ( State(..)
     , TopicsMap
-    , Status(..)
     , initialState
     , Action(..)
     , update
@@ -17,7 +16,6 @@ import Data.Array as A
 import Data.Map as M
 import Data.String as S
 import Flashcards.Client.Topics as Topics
-import Data.Either (Either(Right, Left))
 import Data.Maybe (Maybe(Just, Nothing), maybe)
 import Data.Monoid ((<>), mempty)
 import Data.String (toLower, Pattern(Pattern))
@@ -40,42 +38,29 @@ type TopicsMap = M.Map (Id Topics.Topic) (Entity Topics.Topic)
 -------------------------------------------------------------------------------
 type State = {
       topics :: TopicsMap
-    , status :: Status
     , filterText :: String
     }
 
 
 -------------------------------------------------------------------------------
-data Status = NotLoaded
-            | Loading
-            | Loaded
-            | LoadError String
-
-
--------------------------------------------------------------------------------
 initialState :: State
 initialState = { topics: mempty
-               , status: NotLoaded
                , filterText: mempty
                }
 
 
 -------------------------------------------------------------------------------
 data Action = RefreshTopics
-            | ReceiveTopics (Either String (Array (Entity Topics.Topic)))
+            | ReceiveTopics (Array (Entity Topics.Topic))
             | FilterTopics String
 
 
 -------------------------------------------------------------------------------
 update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX | eff)
-update RefreshTopics s = {
-      state: s { status = Loading }
-    , effects: [map ReceiveTopics Topics.getTopics]
-    }
-update (ReceiveTopics (Left e)) s = noEffects s { status = LoadError e }
-update (ReceiveTopics (Right ts)) s = noEffects s {
-      status = Loaded
-    , topics = mapTopics ts
+-- let parent handle it
+update RefreshTopics s = noEffects s
+update (ReceiveTopics ts) s = noEffects s {
+      topics = mapTopics ts
     }
 update (FilterTopics f) s = noEffects s { filterText = f }
 
@@ -172,12 +157,7 @@ view s = div ! className "container" ##
         ]
     topicsView = div ! className "row topics" #
       div ! className "card-grid col s12" ##
-        topicsView'
-    topicsView' = case s.status of
-      NotLoaded -> [text "Not loaded"]
-      Loading -> [text "Loading..."]
-      LoadError e -> [text e] --TODO; error formatting
-      Loaded -> map topicView topics
+        map topicView topics
     topicView (Entity {id: tid, val: Topics.Topic t}) = div ! className "card s12 topic" #
       div ! className "card-content" ##
         [ span ! className "card-title" #

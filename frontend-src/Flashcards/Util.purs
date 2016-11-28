@@ -10,11 +10,14 @@ module Flashcards.Util
     , slideUp
     , slideDown
     , SlideOptions
+    , maybeToList
+    , addEffect
     ) where
 
 
 -------------------------------------------------------------------------------
 import Data.List as L
+import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.JQuery (JQuery)
 import DOM (DOM)
@@ -23,7 +26,8 @@ import Data.Lens (lens, Lens)
 import Data.Maybe (Maybe(Nothing, Just))
 import Data.String (toLower, contains, Pattern(Pattern))
 import Data.Tuple (Tuple(Tuple))
-import Prelude (Unit, map, (<<<))
+import Prelude (Unit, map, (<<<), (<>))
+import Pux (CoreEffects, EffModel)
 -------------------------------------------------------------------------------
 
 
@@ -87,3 +91,14 @@ effectsL = lens _.effects (_ { effects = _ })
 -------------------------------------------------------------------------------
 stateL :: forall a b r. Lens { state :: a | r } { state :: b | r } a b
 stateL = lens _.state (_ { state = _ })
+
+
+-------------------------------------------------------------------------------
+maybeToList :: forall a. Maybe a -> Array a
+maybeToList Nothing = []
+maybeToList (Just a) = [a]
+
+
+-------------------------------------------------------------------------------
+addEffect :: forall s a e. Aff (CoreEffects e) a -> EffModel s a e -> EffModel s a e
+addEffect e m = m { effects = m.effects <> [e]}

@@ -16,7 +16,7 @@ import Pux (renderToDOM, start)
 import Pux.Router (sampleUrl)
 import Signal ((~>))
 import Signal.Channel (CHANNEL)
-import Signal.Time (every, now, second)
+import Signal.Time (every, second)
 -------------------------------------------------------------------------------
 
 main
@@ -30,10 +30,9 @@ main
 main = do
   urlSignal <- sampleUrl
   let routeSignal = urlSignal ~> App.match
-  currentTime <- now
   let ticks = map App.Tick (every second)
   app <- start
-    { initialState: App.initialState currentTime
+    { initialState: App.initialState
     , update: App.update
     , view: App.view
       -- oddly enough, if ticks comes after routeSignal it doesn't

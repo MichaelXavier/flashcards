@@ -16,29 +16,28 @@ import Flashcards.Components.DeleteConfirm as DeleteConfirm
 import Flashcards.Components.ExpansionPanel as ExpansionPanel
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE)
-import Control.Monad.Except (ExceptT(ExceptT), runExceptT)
 import DOM (DOM)
-import Data.Array (mapWithIndex, singleton, index, (:))
+import Data.Array (index, mapWithIndex, (:))
 import Data.Either (either, Either(Right, Left))
 import Data.Lens (_Just, over, Lens', set, appendOver, setJust, lens)
 import Data.Lens.Index (ix)
-import Data.Maybe (isJust, maybe, fromMaybe, Maybe(Just, Nothing))
-import Data.Monoid ((<>), mempty)
-import Data.Tuple (snd, fst, Tuple(Tuple))
+import Data.Maybe (Maybe(Nothing, Just), fromMaybe, isJust)
+import Data.Monoid ((<>))
 import Flashcards.Client.Cards (updateCard, answerL, questionL)
 import Flashcards.Client.Common (eId, eVal, Entity(Entity))
 import Flashcards.Util (effectsL)
 import Network.HTTP.Affjax (AJAX)
 import Prelude (Unit, bind, const, id, map, pure, show, unit, ($), (<<<))
 import Pux (mapState, mapEffects, noEffects, EffModel)
-import Pux.Html (Html, div, text, a, span, input, form, h4, (##), (!), (#))
+import Pux.Html (Html, a, div, form, h4, input, span, text, (!), (#), (##))
 import Pux.Html.Attributes (className, href, placeholder, name, value, type_, disabled)
 import Pux.Html.Events (onChange, onSubmit, onClick)
+import Pux.Router (link)
 -------------------------------------------------------------------------------
 
 
 data Action = RefreshTopic Topics.TopicId
-            | ReceiveTopic (Either String (Maybe (Tuple (Entity Topics.Topic) (Array (Entity Cards.Card)))))
+            | ReceiveTopic (Entity Topics.Topic) (Array (Entity Cards.Card))
             | NewCard
             | SaveCard
             | ReceiveSaveCard (Either String Unit)
@@ -60,7 +59,7 @@ data Action = RefreshTopic Topics.TopicId
 
 -------------------------------------------------------------------------------
 type State = {
-      topic :: Maybe (Entity Topics.Topic)
+      topic :: Entity Topics.Topic
     , cards :: Array CardState
     , newCard :: Maybe Cards.Card
     , deletingCard :: Maybe (Entity Cards.Card)
@@ -112,9 +111,9 @@ deleteConfirmStateL = lens _.deleteConfirmState (_ { deleteConfirmState = _ })
 
 
 -------------------------------------------------------------------------------
-initialState :: State
-initialState = { topic: Nothing
-               , cards: mempty
+initialState :: Entity Topics.Topic -> Array (Entity Cards.Card) -> State
+initialState topic cards = { topic: topic
+               , cards: map newCardState cards
                , newCard: Nothing
                , deletingCard: Nothing
                , deleteConfirmState: DeleteConfirm.initialState "topic-delete-card"
@@ -123,31 +122,12 @@ initialState = { topic: Nothing
 
 -------------------------------------------------------------------------------
 update :: forall eff. Action -> State -> EffModel State Action (ajax :: AJAX, dom :: DOM, console :: CONSOLE | eff)
-update (RefreshTopic tid) s = {
-      state: s
-    , effects: [getJoined]
-    }
-  where
-    getJoined = map ReceiveTopic $ runExceptT do
-      mTopic <- ExceptT (Topics.getTopic tid)
-      case mTopic of
-        Just topic -> do
-          cards <- ExceptT (Cards.getTopicCards tid)
-          pure (Just (Tuple topic cards))
-        Nothing -> pure Nothing
-update (ReceiveTopic (Left e)) s = noEffects s
-update (ReceiveTopic (Right t)) s = noEffects s { topic = map fst t
-                                                , cards = fromMaybe mempty (map (map newCardState <<< snd) t)
-                                                }
-  where
-    newCardState c = { card: c
-                     , exp: { expanded: false
-                            , id: ("card-expand-" <> show (L.view eId c))
-                            }
-                     , edit: Nothing
-                     }
-update NewCard (s@{topic: Just (Entity e)}) = noEffects (setJust newCardL (Cards.newCard e.id) s)
-update NewCard s = noEffects s -- should not be possible. noop
+update (RefreshTopic _) s = noEffects s -- let parent handle it
+update (ReceiveTopic t cs) s = noEffects s {
+    topic = t
+  , cards = map newCardState cs
+  }
+update NewCard (s@{topic: Entity e}) = noEffects (setJust newCardL (Cards.newCard e.id) s)
 update SaveCard s@{newCard: Just c} = {
       state: s
     , effects: [postCard]
@@ -160,8 +140,7 @@ update (ReceiveSaveCard (Left e)) s = noEffects s
 update (ReceiveSaveCard (Right _)) s = {
       state: set newCardL Nothing s
     , effects: case s.topic of
-         Just (Entity e) -> [pure (RefreshTopic e.id)]
-         Nothing -> []
+        Entity e -> [pure (RefreshTopic e.id)]
     }
 update CancelNewCard s = noEffects s { newCard = Nothing }
 update (EditNewCardQuestion q) (s@{newCard: Just c}) =
@@ -184,9 +163,8 @@ update (DeleteConfirmAction a) s =
      --TODO: cancel delete, clear deletingCard
      effModel = mapState (\dcs -> set deleteConfirmStateL dcs s) (mapEffects DeleteConfirmAction (DeleteConfirm.update a s.deleteConfirmState))
      deleteCard = fromMaybe [] $ do
-       t <- s.topic
        cardE <- s.deletingCard
-       pure [map (either CardNotDeleted (const CardDeleted)) (Cards.deleteTopicCard (L.view eId t) (L.view eId cardE))]
+       pure [map (either CardNotDeleted (const CardDeleted)) (Cards.deleteTopicCard (L.view eId s.topic) (L.view eId cardE))]
      addEffs = case a of
         DeleteConfirm.ConfirmDelete -> deleteCard
         _ -> []
@@ -197,13 +175,12 @@ update (CardNotDeleted e) s = {
           pure Nop
         ]
     }
-update CardDeleted s@{ topic: Just t} = {
+update CardDeleted s@{ topic: t} = {
       state: s
     , effects: [do
           pure (RefreshTopic (L.view eId t))
         ]
     }
-update CardDeleted s = noEffects s
 update Nop s = noEffects s
 --TODO: use a lens + At to update card state, extract this
 update (CardExpansionAction idx a) s =
@@ -245,16 +222,19 @@ view s = div ! className "container" ##
       Just c -> h4 # text ("Are you sure you want to delete \"" <> L.view (eVal <<< Cards.questionL) c <> "\"?")
       Nothing -> text ""
     creatingCard = isJust s.newCard
-    topicView = div ! className "row topic" ##
-      maybe noTopic (singleton <<< topicView') s.topic
-    noTopic = []
-    topicView' (Entity {val: Topics.Topic t}) = div ! className "card col s12" ##
+    topicView = div ! className "row topic" #
+      topicView' s.topic
+    topicView' (Entity {id: tid, val: Topics.Topic t}) = div ! className "card col s12" ##
         [ span ! className "card-title" # text t.title
-        , div ! className "card-action" #
-            a ! href "#" !
-              disabled creatingCard !
-              onClick (const NewCard) #
-              text "Add Card"
+        , div ! className "card-action" ##
+            [ a ! href "#" !
+                disabled creatingCard !
+                onClick (const NewCard) #
+                  text "Add Card"
+            , link ("/topics/" <> show tid <> "/test") !
+                disabled creatingCard #
+                  text "Test"
+            ]
         ]
     newCardView c = form ! className "card new-card s12"
                           ! onSubmit (const SaveCard) ##
@@ -340,3 +320,14 @@ type TopicCardState = {
       card :: Entity Cards.Card
     , expansion :: ExpansionPanel.State
     }
+
+
+-------------------------------------------------------------------------------
+newCardState :: Entity Cards.Card -> CardState
+newCardState c = {
+    card: c
+  , exp: { expanded: false
+         , id: ("card-expand-" <> show (L.view eId c))
+         }
+  , edit: Nothing
+  }
