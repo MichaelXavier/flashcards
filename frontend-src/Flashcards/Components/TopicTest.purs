@@ -18,13 +18,14 @@ import Signal.Time (Time)
 
 type State = {
       topic :: (Entity Topics.Topic)
-    , cards :: Array Cards.Card
+    , cards :: Array (Entity Cards.Card)
     }
 
 
 -------------------------------------------------------------------------------
 data Action = StartTest
             | Tick Time
+            | ReceiveTopic (Entity Topics.Topic) (Array (Entity Cards.Card))
 
 
 -------------------------------------------------------------------------------

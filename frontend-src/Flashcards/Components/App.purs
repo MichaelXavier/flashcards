@@ -89,7 +89,7 @@ type State = {
       currentRoute :: Route
     , topicsState :: Maybe Topics.State
     , topicState :: Maybe Topic.State
-    --, topicTestState :: TopicTest.State
+    , topicTestState :: Maybe TopicTest.State
     , error :: Maybe String
     }
 
@@ -105,6 +105,11 @@ topicStateL = lens _.topicState (_ { topicState = _ })
 
 
 -------------------------------------------------------------------------------
+topicTestStateL :: Lens' State (Maybe TopicTest.State)
+topicTestStateL = lens _.topicTestState (_ { topicTestState = _ })
+
+
+-------------------------------------------------------------------------------
 currentRouteL :: Lens' State Route
 currentRouteL = lens _.currentRoute (_ { currentRoute = _ })
 
@@ -116,16 +121,23 @@ initialState = {
       currentRoute: TopicsR
     , topicsState: Nothing
     , topicState: Nothing
+    , topicTestState: Nothing
     , error: Nothing
     }
 
 
 -------------------------------------------------------------------------------
 unloadStates :: Route -> State -> State
-unloadStates TopicsR s = s { topicState = Nothing }
-unloadStates (TopicR _) s = s { topicsState = Nothing }
-unloadStates (TopicTestR _) s = s { topicsState = Nothing, topicState = Nothing }
-unloadStates NotFoundR s = s { topicsState = Nothing, topicState = Nothing }
+unloadStates TopicsR s = s { topicState = Nothing
+                           , topicTestState = Nothing }
+unloadStates (TopicR _) s = s { topicsState = Nothing
+                              , topicTestState = Nothing}
+unloadStates (TopicTestR _) s = s { topicsState = Nothing
+                                  , topicState = Nothing }
+unloadStates NotFoundR s = s { topicsState = Nothing
+                             , topicState = Nothing
+                             , topicTestState = Nothing
+                             }
 
 
 -------------------------------------------------------------------------------
@@ -135,41 +147,57 @@ update (PageView r) s = {
   , effects: case r of
       TopicsR -> [pure RefreshTopics]
       TopicR tid -> [pure (RefreshTopicAndCards tid)]
-      (TopicTestR _) -> [] --TODO
+      (TopicTestR tid) -> [pure (RefreshTopicAndCards tid)]
       NotFoundR -> []
   }
+
 update (TopicsAction a) s@{ topicsState: Just ts } =
   let eff = mapState (\ts' -> setJust topicsStateL ts' s) (mapEffects TopicsAction (Topics.update a ts))
   in case a of
     Topics.RefreshTopics -> addEffect (pure RefreshTopics) eff
     _ -> eff
 update (TopicsAction a) s = noEffects s
+
 update (TopicAction a) s@{ topicState: Just ts} =
   let eff = mapState (\ts' -> setJust topicStateL ts' s) (mapEffects TopicAction (Topic.update a ts))
   in case a of
     Topic.RefreshTopic tid -> addEffect (pure (RefreshTopicAndCards tid)) eff
     _ -> eff
 update (TopicAction a) s = noEffects s
+
 --TODO: route through anything that needs a clock
 update (Tick t) s = noEffects s
-update (TopicTestAction _) s = noEffects s --TODO
+
+update (TopicTestAction a) s@{ topicTestState: Just ts } =
+  mapState (\ts' -> setJust topicTestStateL ts' s) (mapEffects TopicTestAction (TopicTest.update a ts))
+update (TopicTestAction a) s = noEffects s
+
 update RefreshTopics s = onlyEffects s [map ReceiveTopics getTopics]
+
 update (ReceiveTopics (Left e)) s = update (DisplayError e) s
 update (ReceiveTopics (Right topics)) s@{ currentRoute: TopicsR} =
   update (TopicsAction (Topics.ReceiveTopics topics)) s { topicsState = Just Topics.initialState}
 update (ReceiveTopics _) s = noEffects s
+
 update (RefreshTopicAndCards tid) s = onlyEffects s [map ReceiveTopicAndCards go]
   where
     go = runExceptT $ do
       t <- flip exceptNoteM "Topic not found" =<< ExceptT (getTopic tid)
       cs <- ExceptT (getTopicCards tid)
       pure (Tuple t cs)
+
 update (ReceiveTopicAndCards (Left e)) s = update (DisplayError e) s
+--TODO: should use a traversal to just set both, same goes for ticks
 update (ReceiveTopicAndCards (Right (Tuple topic cards))) s@{ currentRoute: TopicR _} =
   update (TopicAction (Topic.ReceiveTopic topic cards))
          s { topicState = Just (Topic.initialState topic cards)}
+update (ReceiveTopicAndCards (Right (Tuple topic cards))) s@{ currentRoute: TopicTestR _} =
+  update (TopicTestAction (TopicTest.ReceiveTopic topic cards))
+         s { topicTestState = Just ({topic: topic, cards: cards})}
 update (ReceiveTopicAndCards (Right _)) s = noEffects s
+
 update (DisplayError e) s = noEffects s { error = Just e }
+
 
 -------------------------------------------------------------------------------
 --TODO: toast errors or something
@@ -183,7 +211,7 @@ view s = div ! className "container" ##
     --TODO: use alt to go through loaded pages?
     page TopicsR = map (map TopicsAction <<< Topics.view) s.topicsState
     page (TopicR _) = map (map TopicAction <<< Topic.view) s.topicState
-    page (TopicTestR _) = Nothing --TODO
+    page (TopicTestR _) = map (map TopicTestAction <<< TopicTest.view) s.topicTestState
     navigation = nav #
       div ! className "nav-wrapper" #
         div ! className "col s12" ##
@@ -207,8 +235,7 @@ view s = div ! className "container" ##
       ]
       where
         tidS = show tid
-        --TODO: dry
-        topicS = case s.topicState of
+        topicS = case s.topicTestState of
           Just t -> L.view (eVal <<< titleL) t.topic
           Nothing -> tidS
     topicsCrumb = link "/topics" ! className "breadcrumb" # text "Topics"
